@@ -4,10 +4,13 @@ import cat.mineuab.pauitreva.PauITreva;
 import cat.mineuab.pauitreva.model.Pais;
 import cat.mineuab.pauitreva.model.Rang;
 import cat.mineuab.pauitreva.model.Validacio;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -15,6 +18,8 @@ import net.minecraft.server.level.ServerPlayer;
 import xaero.pac.common.claims.player.api.IPlayerChunkClaimAPI;
 import xaero.pac.common.parties.party.member.api.IPartyMemberAPI;
 import xaero.pac.common.server.api.OpenPACServerAPI;
+import xaero.pac.common.server.claims.api.IServerClaimsManagerAPI;
+import xaero.pac.common.server.claims.player.api.IServerPlayerClaimInfoAPI;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 import xaero.pac.common.server.player.config.api.v2.IPlayerConfigAPI;
 import xaero.pac.common.server.player.config.api.v2.IPlayerConfigOptionSpecAPI;
@@ -147,6 +152,27 @@ public final class PontOpac {
         if (pb != null && pb.isAlly(a)) {
             pb.removeAllyParty(a);
         }
+    }
+
+    /**
+     * Els chunks reclamats pels membres del país (amb claims de party, els del líder ja són els del país),
+     * per a cada dimensió, com a parells {x, z}.
+     */
+    public static Map<String, List<int[]>> territori(MinecraftServer server, IServerPartyAPI partit) {
+        IServerClaimsManagerAPI claims = api(server).getServerClaimsManager();
+        Map<String, List<int[]>> territori = new TreeMap<>();
+        partit.getMemberInfoStream().forEach(m -> {
+            if (!claims.hasPlayerInfo(m.getUUID())) {
+                return;
+            }
+            IServerPlayerClaimInfoAPI info = claims.getPlayerInfo(m.getUUID());
+            info.getStream().forEach(dim -> {
+                List<int[]> llista = territori.computeIfAbsent(dim.getKey().toString(), k -> new ArrayList<>());
+                dim.getValue().getStream().forEach(posicions ->
+                        posicions.getStream().forEach(chunk -> llista.add(new int[] {chunk.x, chunk.z})));
+            });
+        });
+        return territori;
     }
 
     /** Si el chunk és reclamat per algun membre del país (o pel país, amb claims de party). */

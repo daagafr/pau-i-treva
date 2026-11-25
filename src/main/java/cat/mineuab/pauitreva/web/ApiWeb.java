@@ -81,7 +81,7 @@ public final class ApiWeb {
             Rang rang = PontOpac.rang(partit, m.getUUID());
             membres.add(new Exportacio.Membre(m.getUsername(), rang == null ? Rang.CIUTADA : rang));
         }
-        return new Exportacio.InfoPartit(PontOpac.nomLider(partit), membres);
+        return new Exportacio.InfoPartit(PontOpac.nomLider(partit), membres, PontOpac.territori(server, partit));
     }
 
     private static void respondre(HttpExchange e) throws IOException {

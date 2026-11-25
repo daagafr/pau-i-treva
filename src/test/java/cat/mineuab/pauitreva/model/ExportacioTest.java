@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -26,8 +27,12 @@ class ExportacioTest {
 
         String json = Exportacio.estat(r, id -> id.equals(cat)
                 ? new Exportacio.InfoPartit("Dagafr", List.of(new Exportacio.Membre("Dagafr", Rang.LIDER),
-                        new Exportacio.Membre("Anty48", Rang.MINISTRE)))
+                        new Exportacio.Membre("Anty48", Rang.MINISTRE)),
+                        Map.of("minecraft:overworld", List.of(new int[] {1, 2}, new int[] {3, -4})))
                 : null, T0 + 5);
+
+        assertTrue(json.contains("\"territori\":{\"minecraft:overworld\":[[1,2],[3,-4]]}"));
+        assertTrue(json.contains("\"territori\":{}")); // Occitània, sense party
 
         assertTrue(json.startsWith("{\"versio\":1,\"generat\":" + (T0 + 5)));
         assertTrue(json.contains("\"sigla\":\"CAT\""));

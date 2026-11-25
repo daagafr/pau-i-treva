@@ -15,8 +15,15 @@ public final class Exportacio {
 
     public static final int MAX_DIARI = 100;
 
-    /** El que surt d'OPAC per a cada país: el líder i els membres. */
-    public record InfoPartit(String lider, List<Membre> membres) {
+    /**
+     * El que surt d'OPAC per a cada país: el líder, els membres i el territori (per a cada dimensió, els
+     * chunks reclamats com a parells {x, z}).
+     */
+    public record InfoPartit(String lider, List<Membre> membres, Map<String, List<int[]>> territori) {
+
+        public InfoPartit(String lider, List<Membre> membres) {
+            this(lider, membres, Map.of());
+        }
     }
 
     public record Membre(String nom, Rang rang) {
@@ -129,7 +136,28 @@ public final class Exportacio {
                 sb.append('}');
             }
         }
-        sb.append("]}");
+        sb.append("],\"territori\":{");
+        if (partit != null) {
+            boolean primeraDim = true;
+            for (Map.Entry<String, List<int[]>> dim : partit.territori().entrySet()) {
+                if (!primeraDim) {
+                    sb.append(',');
+                }
+                primeraDim = false;
+                text(sb, dim.getKey());
+                sb.append(":[");
+                boolean primer = true;
+                for (int[] chunk : dim.getValue()) {
+                    if (!primer) {
+                        sb.append(',');
+                    }
+                    primer = false;
+                    sb.append('[').append(chunk[0]).append(',').append(chunk[1]).append(']');
+                }
+                sb.append(']');
+            }
+        }
+        sb.append("}}");
     }
 
     /** Escriu una cadena JSON, amb les cometes i els caràcters especials escapats. */

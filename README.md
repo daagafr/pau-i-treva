@@ -17,8 +17,10 @@ sense tocar el modpack.
 - Aliances (també aliats a OPAC, en tots dos sentits) i pactes de no agressió amb data de final. Les treves hi són al
   model, però les farà la fase 2 (en acabar una guerra).
 - Diari diplomàtic públic, i avís a tothom quan es funda un país, es fa o es trenca una aliança o un pacte.
-- Cada 30 s: caduquen propostes, pactes i treves; es dissolen els països que ja no tenen party; es torna a posar el
-  nom i el color a OPAC i es refan els aliats d'OPAC que faltin.
+- Cada 30 s: caduquen propostes, pactes i treves; es dissolen els països que fa tres passades que no tenen party; es
+  torna a posar el nom i el color a OPAC i es refan els aliats d'OPAC que faltin.
+- API JSON de només lectura a `http://127.0.0.1:25582/estat.json`: països (amb membres, títols i territori per
+  dimensió), aliances, pactes i treves, i les 100 últimes entrades del diari. Sense propostes ni posicions de jugadors.
 
 ## Ordres
 

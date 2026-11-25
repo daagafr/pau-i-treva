@@ -5,7 +5,7 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 ## Fase 1: nucli i pantalla
 
 - [x] Repositori privat `daagafr/pau-i-treva` i compilació a GitHub Actions (25/11)
-- [x] Model: països, rangs amb nom propi, permisos per rang, aliances, pactes, treves, propostes i diari, amb 22 proves (25/11)
+- [x] Model: països, rangs amb nom propi, permisos per rang, aliances, pactes, treves, propostes i diari, amb proves JUnit (25/11)
 - [x] Pont amb OPAC: país = party, rang d'OPAC → rang del país, nom i color als claims i a la party del líder, aliats en tots dos sentits (25/11)
 - [x] Dades al món (`world/data/pauitreva.dat`) i config (`pauitreva-server.toml`) (25/11)
 - [x] Ordres `/nacio` i `/diplomacia`, amb botons al xat per acceptar i rebutjar (25/11)
@@ -19,7 +19,7 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 - [ ] Ordre d'admin per passar els claims i els chunks forçats de cada membre al líder, amb mode de prova que només compti, i una còpia del món abans
 - [ ] Quan canvia el líder d'una party: provar què fa OPAC amb els claims i, si cal, passar-los al nou líder
 - [ ] Treure el nom i el color del país dels claims del líder vell quan deixa de ser-ho
-- [ ] Territori a l'API (`territori.json`, chunks de cada país) per al mapa de la web
+- [x] Territori a l'API: dins de cada país a `estat.json`, els chunks reclamats pels membres, per dimensió (25/11)
 - [ ] Ruta `nacions.mineuab.org` al túnel de Cloudflare i el host a la CSP de la web
 
 ## Fase 2: guerra
