@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeParseException;
+import java.time.DateTimeException;
 import java.util.Optional;
 
 /**
@@ -32,7 +32,8 @@ public record FinestresGuerra(ZoneId zona, LocalTime iniciFeiner, LocalTime fiFe
                 return Optional.empty();
             }
             return Optional.of(new FinestresGuerra(ZoneId.of(zona.trim()), f[0], f[1], c[0], c[1]));
-        } catch (DateTimeParseException | java.time.DateTimeException e) {
+        } catch (DateTimeException e) {
+            // També hi entren DateTimeParseException (hora mal escrita) i ZoneRulesException (zona que no existeix).
             return Optional.empty();
         }
     }
