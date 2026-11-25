@@ -13,7 +13,9 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 - [x] API JSON de només lectura a `127.0.0.1:25582/estat.json` (25/11)
 - [ ] Provar la 0.1.0 dins del joc: fundar, canviar color i nom (que el Xaero ho ensenyi), aliança i pacte entre dos països, `/nacio capital`, reiniciar i que tot hi sigui
 - [ ] Mirar al servidor si el port 25582 és lliure i si `jdk.httpserver` funciona dins de NeoForge (ho diu el `latest.log` en arrencar)
-- [ ] Pantalla del joc (tecla N): pestanyes País, Membres i Diplomàcia, amb paquets de xarxa. A partir d'aquí el jar ha d'anar també al modpack
+- [ ] Pantalla del joc (tecla N) **dibuixada pel servidor**: el client només pinta pestanyes, llistes i botons que li envia el servidor, i les fases noves només canvien el jar del servidor
+- [ ] Paquets de xarxa **opcionals** (`PayloadRegistrar.optional()`): qui tingui el modpack vell pot entrar i fa servir les ordres; qui tingui el nou, la pantalla. Així el modpack només es toca un cop
+- [ ] Mirar si l'App de Modrinth actualitza la instància al seu lloc (sense perdre mons, opcions ni mapes del Xaero) quan el modpack és el publicat a Modrinth, i explicar-ho a /create
 - [ ] Avisos a pantalla amb so (ara només surten al xat)
 - [ ] Claims del país: posar `partyOwnedClaims = true`, `primaryPartySystem = "default"` i els bonus per membre a la config d'OPAC (amb reinici)
 - [ ] Ordre d'admin per passar els claims i els chunks forçats de cada membre al líder, amb mode de prova que només compti, i una còpia del món abans
@@ -24,11 +26,16 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 
 ## Fase 2: guerra
 
-- [ ] Declaració amb objectiu (conquesta, humiliació, reparacions), preparació de 24 h i treva en acabar
-- [ ] Finestres de guerra configurables: de dilluns a divendres de 18:00 a 23:00, cap de setmana de 12:00 a 23:00 (Madrid)
+- [x] Model de la guerra amb proves: declaració amb objectiu (conquesta de 1 a N chunks, humiliació, reparacions), preparació, punts de -100 a 100, pau imposada (amb prou punts) o negociada, rendició, treva en acabar, i desat al món (25/11)
+- [x] Finestres de guerra amb proves: de dilluns a divendres de 18:00 a 23:00, cap de setmana de 12:00 a 23:00, hora de Madrid, amb el canvi d'hora (25/11)
+- [x] Una pau proposada no es pot canviar just abans que l'altre l'accepti (cal dir quina s'ha vist) (25/11)
+- [ ] Ordres `/guerra` (declara, estat, pau, accepta, rendeix) i finestres a la config
+- [ ] Comprovar a OPAC, en declarar una conquesta, que els chunks són del defensor i toquen la frontera de l'atacant
+- [ ] Reparacions: decidir com es paguen (Numismatics o ítems); ara el model només fa conquesta i humiliació als termes
+- [ ] Guerres a l'API (`estat.json`)
 - [ ] Accés als chunks en disputa amb `IChunkAccessOverriderAPI` (destruir només l'objectiu, PvP a la resta)
 - [ ] Captura per presència, baixes, capital i puntuació de guerra
-- [ ] Tractats de pau i traspàs de chunks entre líders
+- [ ] Traspàs dels chunks a OPAC en signar la pau (del líder del perdedor al del guanyador)
 - [ ] Pestanyes Guerres i Tractats, i barra de guerra
 - [ ] Treure OPAC Warfare (abans, acabar les guerres que tingui obertes)
 
