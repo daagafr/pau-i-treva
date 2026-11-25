@@ -1,0 +1,33 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All Rights Reserved"
+
+[[mods]]
+modId = "pauitreva"
+version = "${versio}"
+displayName = "Pau i Treva"
+authors = "MineUAB"
+description = '''
+Països, diplomàcia i guerra per a MineUAB Create, sobre Open Parties and Claims.
+'''
+
+[[dependencies.pauitreva]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.pauitreva]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.21.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.pauitreva]]
+modId = "openpartiesandclaims"
+type = "required"
+versionRange = "[0.33.0,)"
+ordering = "AFTER"
+side = "BOTH"
