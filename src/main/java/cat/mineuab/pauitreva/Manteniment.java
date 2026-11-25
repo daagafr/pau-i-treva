@@ -9,8 +9,11 @@ import cat.mineuab.pauitreva.model.TipusRelacio;
 import cat.mineuab.pauitreva.mon.Dades;
 import cat.mineuab.pauitreva.opac.PontOpac;
 import cat.mineuab.pauitreva.ordres.Missatges;
+import cat.mineuab.pauitreva.web.ApiWeb;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import net.minecraft.server.MinecraftServer;
 
 /**
@@ -20,20 +23,42 @@ import net.minecraft.server.MinecraftServer;
  */
 public final class Manteniment {
 
+    /**
+     * Quantes vegades seguides ha de faltar la party d'un país abans de dissoldre'l. Així, si en arrencar OPAC
+     * encara no té les parties a punt, no es perd cap país.
+     */
+    private static final int ABSENCIES_PER_DISSOLDRE = 3;
+
     private static boolean engegat;
     private static long ticks;
+    private static final Map<UUID, Integer> absencies = new HashMap<>();
 
     private Manteniment() {
     }
 
+    /** La primera passada es fa al cap d'un interval, no en arrencar. */
     public static void engegar(MinecraftServer server) {
         engegat = true;
         ticks = 0;
-        fer(server);
+        absencies.clear();
+        boolean api;
+        int port;
+        try {
+            api = Config.API_ACTIVA.get();
+            port = Config.API_PORT.get();
+        } catch (IllegalStateException e) {
+            api = true;
+            port = 25582;
+        }
+        if (api) {
+            ApiWeb.engegar(port);
+            ApiWeb.actualitzar(server);
+        }
     }
 
     public static void aturar() {
         engegat = false;
+        ApiWeb.aturar();
     }
 
     public static void tick(MinecraftServer server) {
@@ -62,10 +87,17 @@ public final class Manteniment {
 
             for (Pais p : List.copyOf(r.paisos())) {
                 if (PontOpac.partit(server, p.id()) == null) {
-                    r.dissoldre(p.id(), "la seva party d'OPAC ja no existeix", ara);
-                    Missatges.anunciar(server, r.darrers(1).get(0).text());
+                    int vegades = absencies.merge(p.id(), 1, Integer::sum);
+                    PauITreva.LOG.warn("Pau i Treva: la party de {} no hi és ({} de {})", Registre.etiqueta(p),
+                            vegades, ABSENCIES_PER_DISSOLDRE);
+                    if (vegades >= ABSENCIES_PER_DISSOLDRE) {
+                        absencies.remove(p.id());
+                        r.dissoldre(p.id(), "la seva party d'OPAC ja no existeix", ara);
+                        Missatges.anunciar(server, r.darrers(1).get(0).text());
+                    }
                     continue;
                 }
+                absencies.remove(p.id());
                 PontOpac.aplicarIdentitat(server, p);
             }
 
@@ -74,6 +106,8 @@ public final class Manteniment {
                     PontOpac.aliar(server, e.getKey().a(), e.getKey().b());
                 }
             }
+
+            ApiWeb.actualitzar(server);
         } catch (RuntimeException e) {
             // Mai no ha de tombar el servidor: s'avisa al registre i es torna a provar la propera vegada.
             PauITreva.LOG.error("Pau i Treva: error al manteniment", e);

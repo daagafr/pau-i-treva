@@ -20,6 +20,15 @@ public final class Config {
                     "dels països a OPAC.")
             .defineInRange("segonsManteniment", 30, 5, 3600);
 
+    public static final ModConfigSpec.BooleanValue API_ACTIVA = B
+            .comment("Obre l'API JSON de només lectura per a la web (/estat.json), només a 127.0.0.1.",
+                    "Es llegeix en arrencar el servidor.")
+            .define("apiActiva", true);
+
+    public static final ModConfigSpec.IntValue API_PORT = B
+            .comment("Port de l'API web. Credits fa servir el 25580 i Perfil el 25581.")
+            .defineInRange("apiPort", 25582, 1024, 65535);
+
     public static final ModConfigSpec SPEC = B.build();
 
     private Config() {
