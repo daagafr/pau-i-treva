@@ -4,8 +4,10 @@ import cat.mineuab.pauitreva.PauITreva;
 import cat.mineuab.pauitreva.model.Pais;
 import cat.mineuab.pauitreva.model.Rang;
 import cat.mineuab.pauitreva.model.Validacio;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -104,12 +106,20 @@ public final class PontOpac {
         return true;
     }
 
+    /** Els canvis que OPAC ja ha rebutjat, perquè l'avís surti un sol cop i no cada 30 s. */
+    private static final Set<String> REBUTJATS = new HashSet<>();
+
     private static <T> void posar(IPlayerConfigAPI config, IPlayerConfigOptionSpecAPI<T> opcio, T valor) {
         if (Objects.equals(config.getRaw(opcio), valor)) {
             return;
         }
+        String clau = config.getPlayerId() + " " + opcio.getId() + " " + valor;
+        if (REBUTJATS.contains(clau)) {
+            return;
+        }
         IPlayerConfigAPI.SetResult r = config.tryToSet(opcio, valor);
         if (r != IPlayerConfigAPI.SetResult.SUCCESS) {
+            REBUTJATS.add(clau);
             PauITreva.LOG.warn("Pau i Treva: OPAC no ha deixat posar {} = {} a {}: {}", opcio.getId(), valor,
                     config.getPlayerId(), r);
         }
