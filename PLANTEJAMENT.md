@@ -1,6 +1,6 @@
 # Pau i Treva: mod propi de països per a MineUAB Create
 
-Plantejament del 25/11/2026. Les decisions del final ja estan preses, però encara no hi ha codi.
+Plantejament del 25/11/2026. Les decisions del final ja estan preses. El 25/11 a la nit es va fer la part de servidor de la fase 1 (0.1.0): què hi ha i què falta és a [TASQUES.md](TASQUES.md).
 
 ## Què tenim ara i per què no va bé
 
