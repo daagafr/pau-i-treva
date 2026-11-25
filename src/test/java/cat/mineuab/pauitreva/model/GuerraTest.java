@@ -114,10 +114,22 @@ class GuerraTest {
         Guerra g = declara();
         Termes tot = new Termes(quatre, true);
         assertEquals(Resultat.PAU_PROPOSADA, r.proposarPau(cat, g.id(), cat, tot, T0));
-        assertEquals(Resultat.NO_HI_HA_PROPOSTA, r.acceptarPau(cat, g.id(), T0, TREVA)); // no es pot acceptar la pròpia
+        assertEquals(Resultat.NO_HI_HA_PROPOSTA, r.acceptarPau(cat, g.id(), T0, T0, TREVA)); // no es pot acceptar la pròpia
         // Sense punts, però l'altre hi està d'acord.
-        assertEquals(Resultat.PAU_SIGNADA, r.acceptarPau(occ, g.id(), T0, TREVA));
+        assertEquals(Resultat.PAU_SIGNADA, r.acceptarPau(occ, g.id(), T0, T0, TREVA));
         assertTrue(r.propostaPau(g.id()).isEmpty());
+    }
+
+    @Test
+    void noEsPotCanviarLaPauJustAbansQueLAcceptin() {
+        Guerra g = declara();
+        r.proposarPau(cat, g.id(), cat, Termes.blanca(), T0);
+        long vista = r.propostaPau(g.id()).orElseThrow().creada();
+        // L'atacant la canvia per una de molt més dura...
+        r.proposarPau(cat, g.id(), cat, new Termes(quatre, true), T0 + 1);
+        // ...i el defensor, que havia vist la blanca, no accepta la nova sense voler.
+        assertEquals(Resultat.NO_HI_HA_PROPOSTA, r.acceptarPau(occ, g.id(), vista, T0 + 2, TREVA));
+        assertEquals(TipusRelacio.GUERRA, r.relacio(cat, occ));
     }
 
     @Test

@@ -560,14 +560,20 @@ public final class Registre {
         return Resultat.PAU_PROPOSADA;
     }
 
-    /** L'altre bàndol accepta la pau proposada. */
-    public Resultat acceptarPau(UUID qui, UUID guerra, long ara, long treva) {
+    /**
+     * L'altre bàndol accepta la pau proposada.
+     *
+     * @param creada quan es va fer la proposta que el jugador ha vist ({@link PropostaPau#creada()}). Si
+     *               mentrestant n'hi ha una altra, no s'accepta: així ningú no pot canviar els termes just
+     *               abans que l'altre faci clic a «Accepta».
+     */
+    public Resultat acceptarPau(UUID qui, UUID guerra, long creada, long ara, long treva) {
         Guerra g = guerres.get(guerra);
         PropostaPau pr = propostesPau.get(guerra);
         if (g == null) {
             return Resultat.NO_HI_HA_GUERRA;
         }
-        if (pr == null || !g.hiEs(qui) || pr.de().equals(qui)) {
+        if (pr == null || !g.hiEs(qui) || pr.de().equals(qui) || pr.creada() != creada) {
             return Resultat.NO_HI_HA_PROPOSTA;
         }
         return ferPau(guerra, pr.guanyador(), pr.termes(), false, ara, treva);
