@@ -7,7 +7,15 @@ public enum Resultat {
     ACCEPTADA,
     TRENCADA_ALIANCA,
     TRENCAT_PACTE,
+    DECLARADA,
+    PAU_PROPOSADA,
+    PAU_SIGNADA,
 
+    ALIATS,
+    EN_PACTE,
+    OBJECTIU_INVALID,
+    NO_HI_HA_GUERRA,
+    PUNTS_INSUFICIENTS,
     JA_EXISTEIX,
     NO_EXISTEIX,
     NOM_INVALID,
@@ -26,6 +34,7 @@ public enum Resultat {
 
     public boolean bo() {
         return this == FET || this == PROPOSADA || this == ACCEPTADA
-                || this == TRENCADA_ALIANCA || this == TRENCAT_PACTE;
+                || this == TRENCADA_ALIANCA || this == TRENCAT_PACTE
+                || this == DECLARADA || this == PAU_PROPOSADA || this == PAU_SIGNADA;
     }
 }

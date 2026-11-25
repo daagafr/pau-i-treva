@@ -2,6 +2,12 @@ package cat.mineuab.pauitreva.mon;
 
 import cat.mineuab.pauitreva.PauITreva;
 import cat.mineuab.pauitreva.model.Capital;
+import cat.mineuab.pauitreva.model.Chunk;
+import cat.mineuab.pauitreva.model.Guerra;
+import cat.mineuab.pauitreva.model.Termes;
+import cat.mineuab.pauitreva.model.TipusObjectiu;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import cat.mineuab.pauitreva.model.Esdeveniment;
 import cat.mineuab.pauitreva.model.EstatRelacio;
 import cat.mineuab.pauitreva.model.Pais;
@@ -119,8 +125,54 @@ public final class Dades extends SavedData {
         }
         tag.put("diari", diari);
 
+        ListTag guerres = new ListTag();
+        for (Guerra g : registre.guerres()) {
+            CompoundTag t = new CompoundTag();
+            t.putUUID("id", g.id());
+            t.putUUID("atacant", g.atacant());
+            t.putUUID("defensor", g.defensor());
+            t.putString("objectiu", g.objectiu().name());
+            t.put("chunks", chunks(g.chunks()));
+            t.putLong("declarada", g.declarada());
+            t.putLong("inici", g.inici());
+            t.putInt("punts", g.punts());
+            Registre.PropostaPau pau = registre.propostaPau(g.id()).orElse(null);
+            if (pau != null) {
+                CompoundTag p = new CompoundTag();
+                p.putUUID("de", pau.de());
+                p.putUUID("guanyador", pau.guanyador());
+                p.put("chunks", chunks(pau.termes().chunks()));
+                p.putBoolean("humiliacio", pau.termes().humiliacio());
+                p.putLong("creada", pau.creada());
+                t.put("pau", p);
+            }
+            guerres.add(t);
+        }
+        tag.put("guerres", guerres);
+
         versioDesada = registre.versio();
         return tag;
+    }
+
+    private static ListTag chunks(Set<Chunk> chunks) {
+        ListTag l = new ListTag();
+        for (Chunk c : chunks) {
+            CompoundTag t = new CompoundTag();
+            t.putString("dimensio", c.dimensio());
+            t.putInt("x", c.x());
+            t.putInt("z", c.z());
+            l.add(t);
+        }
+        return l;
+    }
+
+    private static Set<Chunk> chunks(ListTag l) {
+        Set<Chunk> r = new LinkedHashSet<>();
+        for (Tag e : l) {
+            CompoundTag t = (CompoundTag) e;
+            r.add(new Chunk(t.getString("dimensio"), t.getInt("x"), t.getInt("z")));
+        }
+        return r;
     }
 
     /** Llegeix les dades. Una entrada dolenta s'avisa al registre i se salta, sense perdre la resta. */
@@ -181,8 +233,27 @@ public final class Dades extends SavedData {
             r.carregarEsdeveniment(new Esdeveniment(t.getLong("quan"), t.getString("tipus"), t.getString("text")));
         }
 
-        PauITreva.LOG.info("Pau i Treva: {} països, {} relacions, {} propostes i {} entrades del diari",
-                r.paisos().size(), r.totesLesRelacions().size(), r.totesLesPropostes().size(), r.diari().size());
+        for (Tag e : tag.getList("guerres", Tag.TAG_COMPOUND)) {
+            try {
+                CompoundTag t = (CompoundTag) e;
+                Guerra g = new Guerra(t.getUUID("id"), t.getUUID("atacant"), t.getUUID("defensor"),
+                        TipusObjectiu.valueOf(t.getString("objectiu")), chunks(t.getList("chunks", Tag.TAG_COMPOUND)),
+                        t.getLong("declarada"), t.getLong("inici"), t.getInt("punts"));
+                r.carregarGuerra(g);
+                if (t.contains("pau", Tag.TAG_COMPOUND)) {
+                    CompoundTag p = t.getCompound("pau");
+                    r.carregarPropostaPau(g.id(), new Registre.PropostaPau(p.getUUID("de"), p.getUUID("guanyador"),
+                            new Termes(chunks(p.getList("chunks", Tag.TAG_COMPOUND)), p.getBoolean("humiliacio")),
+                            p.getLong("creada")));
+                }
+            } catch (RuntimeException ex) {
+                PauITreva.LOG.error("Pau i Treva: no s'ha pogut llegir una guerra: {}", e, ex);
+            }
+        }
+
+        PauITreva.LOG.info("Pau i Treva: {} països, {} relacions, {} propostes, {} guerres i {} entrades del diari",
+                r.paisos().size(), r.totesLesRelacions().size(), r.totesLesPropostes().size(), r.guerres().size(),
+                r.diari().size());
         return new Dades(r);
     }
 }

@@ -15,4 +15,6 @@ public record Esdeveniment(long quan, String tipus, String text) {
     public static final String PACTE_TRENCAT = "pacte_trencat";
     public static final String PACTE_ACABAT = "pacte_acabat";
     public static final String TREVA_ACABADA = "treva_acabada";
+    public static final String GUERRA = "guerra";
+    public static final String PAU = "pau";
 }

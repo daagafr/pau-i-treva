@@ -82,6 +82,14 @@ public final class Missatges {
             case ACCEPTADA -> "Acceptat.";
             case TRENCADA_ALIANCA -> "Aliança trencada.";
             case TRENCAT_PACTE -> "Pacte trencat.";
+            case DECLARADA -> "Guerra declarada.";
+            case PAU_PROPOSADA -> "Pau proposada.";
+            case PAU_SIGNADA -> "Pau signada.";
+            case ALIATS -> "Sou aliats: per declarar-los la guerra, primer cal trencar l'aliança.";
+            case EN_PACTE -> "Teniu un pacte de no agressió: trencar-lo abans d'hora queda al diari.";
+            case OBJECTIU_INVALID -> "L'objectiu de la guerra no val.";
+            case NO_HI_HA_GUERRA -> "Aquesta guerra no existeix (o ja s'ha acabat).";
+            case PUNTS_INSUFICIENTS -> "No teniu prou punts de guerra per imposar aquests termes.";
             case JA_EXISTEIX -> "Aquesta party ja és un país.";
             case NO_EXISTEIX -> "Aquest país no existeix.";
             case NOM_INVALID -> "Aquest nom no val: de " + Validacio.NOM_MIN + " a " + Validacio.NOM_MAX

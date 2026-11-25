@@ -32,7 +32,14 @@ public final class Registre {
     private final Map<Parella, EstatRelacio> relacions = new HashMap<>();
     private final List<Proposta> propostes = new ArrayList<>();
     private final ArrayDeque<Esdeveniment> diari = new ArrayDeque<>();
+    private final Map<UUID, Guerra> guerres = new LinkedHashMap<>();
+    /** Per a cada guerra, la proposta de pau pendent (com a molt una). */
+    private final Map<UUID, PropostaPau> propostesPau = new HashMap<>();
     private long versio;
+
+    /** Una pau proposada per {@code de}, que l'altre bàndol ha d'acceptar. */
+    public record PropostaPau(UUID de, UUID guanyador, Termes termes, long creada) {
+    }
 
     public long versio() {
         return versio;
@@ -245,6 +252,13 @@ public final class Registre {
         }
         relacions.keySet().removeIf(parella -> parella.conte(id));
         propostes.removeIf(pr -> pr.de().equals(id) || pr.a().equals(id));
+        guerres.values().removeIf(g -> {
+            if (g.hiEs(id)) {
+                propostesPau.remove(g.id());
+                return true;
+            }
+            return false;
+        });
         String text = etiqueta(p) + " s'ha dissolt" + (motiu == null || motiu.isEmpty() ? "." : ": " + motiu + ".");
         apuntar(ara, Esdeveniment.DISSOLUCIO, text);
         canvi();
@@ -434,7 +448,218 @@ public final class Registre {
         canvi();
     }
 
+    // ---------------------------------------------------------------- Guerra
+
+    public Collection<Guerra> guerres() {
+        return Collections.unmodifiableCollection(guerres.values());
+    }
+
+    public Optional<Guerra> guerra(UUID id) {
+        return Optional.ofNullable(guerres.get(id));
+    }
+
+    public Optional<Guerra> guerraEntre(UUID a, UUID b) {
+        return guerres.values().stream().filter(g -> g.hiEs(a) && g.hiEs(b)).findFirst();
+    }
+
+    public List<Guerra> guerresDe(UUID pais) {
+        return guerres.values().stream().filter(g -> g.hiEs(pais)).toList();
+    }
+
+    public Optional<PropostaPau> propostaPau(UUID guerra) {
+        return Optional.ofNullable(propostesPau.get(guerra));
+    }
+
+    /**
+     * Declara la guerra. Qui crida ha de comprovar abans, a OPAC, que els chunks d'una conquesta són del
+     * defensor (i, si cal, que toquen la frontera de l'atacant).
+     *
+     * @param chunks      per a una conquesta, de 1 a {@code maxChunks} chunks; per als altres objectius, cap
+     * @param preparacio  quant temps passa fins que es pot lluitar
+     */
+    public Resultat declararGuerra(UUID atacant, UUID defensor, TipusObjectiu objectiu, java.util.Set<Chunk> chunks,
+                                   long ara, long preparacio, int maxChunks) {
+        if (atacant.equals(defensor)) {
+            return Resultat.MATEIX_PAIS;
+        }
+        Pais a = paisos.get(atacant);
+        Pais d = paisos.get(defensor);
+        if (a == null || d == null) {
+            return Resultat.NO_EXISTEIX;
+        }
+        switch (relacio(atacant, defensor)) {
+            case ALIANCA -> {
+                return Resultat.ALIATS;
+            }
+            case PACTE -> {
+                return Resultat.EN_PACTE;
+            }
+            case TREVA -> {
+                return Resultat.EN_TREVA;
+            }
+            case GUERRA -> {
+                return Resultat.EN_GUERRA;
+            }
+            default -> {
+            }
+        }
+        boolean conquesta = objectiu == TipusObjectiu.CONQUESTA;
+        if (conquesta ? chunks.isEmpty() || chunks.size() > maxChunks : !chunks.isEmpty()) {
+            return Resultat.OBJECTIU_INVALID;
+        }
+        Guerra g = new Guerra(UUID.randomUUID(), atacant, defensor, objectiu, chunks, ara, ara + preparacio, 0);
+        guerres.put(g.id(), g);
+        Parella parella = Parella.de(atacant, defensor);
+        relacions.put(parella, new EstatRelacio(TipusRelacio.GUERRA, ara, 0));
+        propostes.removeIf(x -> parella.equals(Parella.de(x.de(), x.a())));
+        String perque = conquesta
+                ? "per conquerir " + chunks.size() + (chunks.size() == 1 ? " chunk" : " chunks")
+                : "per " + objectiu.nom();
+        long hores = Math.round(preparacio / (double) HORA);
+        apuntar(ara, Esdeveniment.GUERRA, etiqueta(a) + " declara la guerra a " + etiqueta(d) + " " + perque
+                + ". Es podrà lluitar d'aquí a " + hores + (hores == 1 ? " hora." : " hores."));
+        canvi();
+        return Resultat.DECLARADA;
+    }
+
+    /** Suma punts de guerra al país {@code perAquest} (i els treu al seu enemic). */
+    public Resultat sumarPunts(UUID guerra, UUID perAquest, int punts) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (!g.hiEs(perAquest)) {
+            return Resultat.TIPUS_INVALID;
+        }
+        int abans = g.punts();
+        g.sumar(perAquest, punts);
+        if (g.punts() != abans) {
+            canvi();
+        }
+        return Resultat.FET;
+    }
+
+    /**
+     * Proposa una pau. L'altre bàndol l'ha d'acceptar amb {@link #acceptarPau}; si {@code de} ja té prou punts
+     * per als termes i és qui guanya, la pot imposar directament amb {@link #ferPau}.
+     */
+    public Resultat proposarPau(UUID de, UUID guerra, UUID guanyador, Termes termes, long ara) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (!g.hiEs(de) || !g.hiEs(guanyador)) {
+            return Resultat.TIPUS_INVALID;
+        }
+        Resultat valids = termesValids(g, guanyador, termes);
+        if (valids != null) {
+            return valids;
+        }
+        propostesPau.put(g.id(), new PropostaPau(de, guanyador, termes, ara));
+        canvi();
+        return Resultat.PAU_PROPOSADA;
+    }
+
+    /** L'altre bàndol accepta la pau proposada. */
+    public Resultat acceptarPau(UUID qui, UUID guerra, long ara, long treva) {
+        Guerra g = guerres.get(guerra);
+        PropostaPau pr = propostesPau.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (pr == null || !g.hiEs(qui) || pr.de().equals(qui)) {
+            return Resultat.NO_HI_HA_PROPOSTA;
+        }
+        return ferPau(guerra, pr.guanyador(), pr.termes(), false, ara, treva);
+    }
+
+    /** Qui es rendeix dona a l'enemic tot l'objectiu de la guerra (si l'enemic és l'atacant) o una pau blanca. */
+    public Resultat rendir(UUID qui, UUID guerra, long ara, long treva) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (!g.hiEs(qui)) {
+            return Resultat.TIPUS_INVALID;
+        }
+        UUID guanyador = g.enemic(qui);
+        Termes termes = guanyador.equals(g.atacant())
+                ? new Termes(g.chunks(), g.objectiu() == TipusObjectiu.HUMILIACIO)
+                : new Termes(java.util.Set.of(), true);
+        return ferPau(guerra, guanyador, termes, false, ara, treva);
+    }
+
+    /**
+     * Signa la pau i acaba la guerra: treu la guerra, posa una treva de {@code treva} mil·lisegons i ho apunta
+     * al diari. Els chunks dels termes els ha de passar a OPAC qui crida (del líder del defensor al del
+     * guanyador).
+     *
+     * @param imposada si és {@code true}, el guanyador ha de tenir prou punts per pagar els termes
+     */
+    public Resultat ferPau(UUID guerra, UUID guanyador, Termes termes, boolean imposada, long ara, long treva) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (!g.hiEs(guanyador)) {
+            return Resultat.TIPUS_INVALID;
+        }
+        Resultat valids = termesValids(g, guanyador, termes);
+        if (valids != null) {
+            return valids;
+        }
+        if (imposada && termes.cost(g) > g.puntsDe(guanyador)) {
+            return Resultat.PUNTS_INSUFICIENTS;
+        }
+        guerres.remove(guerra);
+        propostesPau.remove(guerra);
+        relacions.put(Parella.de(g.atacant(), g.defensor()), new EstatRelacio(TipusRelacio.TREVA, ara, ara + treva));
+        String guanya = paisos.containsKey(guanyador) ? etiqueta(paisos.get(guanyador)) : "?";
+        UUID perdedor = g.enemic(guanyador);
+        String perd = paisos.containsKey(perdedor) ? etiqueta(paisos.get(perdedor)) : "?";
+        String text;
+        if (termes.esBlanca()) {
+            text = "Pau blanca entre " + guanya + " i " + perd + ".";
+        } else {
+            List<String> parts = new ArrayList<>();
+            if (!termes.chunks().isEmpty()) {
+                int n = termes.chunks().size();
+                parts.add(perd + " cedeix " + n + (n == 1 ? " chunk" : " chunks") + " a " + guanya);
+            }
+            if (termes.humiliacio()) {
+                parts.add(perd + " queda humiliat");
+            }
+            text = "Pau entre " + guanya + " i " + perd + ": " + String.join("; ", parts) + ".";
+        }
+        apuntar(ara, Esdeveniment.PAU, text);
+        canvi();
+        return Resultat.PAU_SIGNADA;
+    }
+
+    /** Els chunks dels termes han de ser de l'objectiu, i només els pot guanyar l'atacant. */
+    private static Resultat termesValids(Guerra g, UUID guanyador, Termes termes) {
+        if (!termes.chunks().isEmpty()
+                && (!guanyador.equals(g.atacant()) || !g.chunks().containsAll(termes.chunks()))) {
+            return Resultat.OBJECTIU_INVALID;
+        }
+        return null;
+    }
+
     // ---------------------------------------------------------------- Càrrega de les dades desades
+
+    public void carregarGuerra(Guerra g) {
+        guerres.put(g.id(), g);
+        canvi();
+    }
+
+    public void carregarPropostaPau(UUID guerra, PropostaPau p) {
+        propostesPau.put(guerra, p);
+        canvi();
+    }
+
+    public Map<UUID, PropostaPau> totesLesPropostesPau() {
+        return Collections.unmodifiableMap(propostesPau);
+    }
 
     /** Només per carregar les dades del món: no comprova res ni apunta res al diari. */
     public void carregarPais(Pais p) {
