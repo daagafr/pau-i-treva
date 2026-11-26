@@ -31,3 +31,7 @@ type = "required"
 versionRange = "[0.33.0,)"
 ordering = "AFTER"
 side = "BOTH"
+
+# El PvP de guerra: una excepció a la protecció d'OPAC per als enemics en guerra (vegeu ProteccioOpacMixin).
+[[mixins]]
+config = "pauitreva.mixins.json"

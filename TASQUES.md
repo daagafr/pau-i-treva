@@ -56,8 +56,8 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 
 ## Per fer tu (David)
 
-- [ ] Decidir si la zona en disputa ha de ser oberta a tothom durant la finestra (ara sí: també els neutrals hi poden trencar). Si no, es pot vetar als neutrals amb `IChunkAccessOverriderAPI` (només per als blocs)
-- [ ] Decidir si el PvP de la guerra ha de ser per a tothom al territori dels dos països (ara sí: també neutrals i aliats, durant la finestra) o només entre bel·ligerants
+- [x] Zona en disputa només per als bel·ligerants (decidit el 26/11): accés amb `IChunkAccessOverriderAPI`; les explosions, de qualsevol
+- [x] PvP de guerra només entre enemics (decidit el 26/11): mixin a OPAC, provat amb cops i fletxes
 - [ ] Mirar els números de la guerra (`captura` i `punts` a la config) després de la primera guerra de veritat
 - [ ] Pujar els commits a GitHub perquè Actions en faci el jar (`git push` a `pau-i-treva/`)
 

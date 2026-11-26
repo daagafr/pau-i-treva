@@ -1,6 +1,7 @@
 package cat.mineuab.pauitreva;
 
 import cat.mineuab.pauitreva.guerra.Batalles;
+import cat.mineuab.pauitreva.opac.AccesGuerra;
 import cat.mineuab.pauitreva.opac.VetClaims;
 import cat.mineuab.pauitreva.ordres.Ordres;
 import cat.mineuab.pauitreva.ordres.OrdresGuerra;
@@ -39,8 +40,10 @@ public final class PauITreva {
             Ordres.registrar(e.getDispatcher());
             OrdresGuerra.registrar(e.getDispatcher());
         });
-        NeoForge.EVENT_BUS.addListener(OPACServerAddonRegisterEvent.class, e ->
-                e.getContext().getClaimActionListenerManagerAPI().register(new VetClaims()));
+        NeoForge.EVENT_BUS.addListener(OPACServerAddonRegisterEvent.class, e -> {
+            e.getContext().getClaimActionListenerManagerAPI().register(new VetClaims());
+            e.getContext().getChunkAccessOverriderManagerAPI().register(new AccesGuerra());
+        });
         NeoForge.EVENT_BUS.addListener(ServerStartedEvent.class, e -> {
             Manteniment.engegar(e.getServer());
             Batalles.engegar(e.getServer());

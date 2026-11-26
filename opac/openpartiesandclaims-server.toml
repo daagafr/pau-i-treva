@@ -7,8 +7,8 @@
 	# Les parties d'OPAC són els països (no hi ha cap altre sistema de parties instal·lat).
 	primaryPartySystem = "default"
 	# Els OPs (i els mods) poden canviar aquestes opcions per jugador; els jugadors, no. Les vuit primeres són
-	# les de per defecte d'OPAC; la darrera és la que fa servir Pau i Treva per obrir el PvP de la guerra.
-	opConfigurablePlayerConfigOptions = ["claims.bonusChunkClaims", "claims.bonusChunkForceloads", "claims.bonusAnchors", "claims.bonusAnchorRange", "bonusPlayerGroups", "bonusPlayerGroupSpace", "claims.allowedToClaim", "claims.allowedToAddForceloads", "claims.protection.exceptions.playersByPlayers"]
+	# les de per defecte d'OPAC; la darrera és la que fa servir Pau i Treva per obrir la zona en disputa a les explosions durant la guerra.
+	opConfigurablePlayerConfigOptions = ["claims.bonusChunkClaims", "claims.bonusChunkForceloads", "claims.bonusAnchors", "claims.bonusAnchorRange", "bonusPlayerGroups", "bonusPlayerGroupSpace", "claims.allowedToClaim", "claims.allowedToAddForceloads", "claims.protection.exceptions.blocksByExplosions"]
 
 	[serverConfig.claims]
 		# Els claims són del país (tècnicament, del líder de la party). Abans d'activar-ho, /nacio admin migra.

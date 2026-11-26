@@ -19,9 +19,7 @@ import cat.mineuab.pauitreva.model.Registre;
 import cat.mineuab.pauitreva.model.TipusRelacio;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.UUID;
-import net.minecraft.nbt.NbtUtils;
 import java.util.Map;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -43,9 +41,6 @@ public final class Dades extends SavedData {
 
     private final Registre registre;
     private long versioDesada;
-    /** Configs d'OPAC on el mod ha obert el PvP de la guerra (vegeu ZonaOpac#aplicarPvp). */
-    private final Set<UUID> pvpObert = new HashSet<>();
-    private boolean pvpCanviat;
 
     private Dades(Registre registre) {
         this.registre = registre;
@@ -65,18 +60,9 @@ public final class Dades extends SavedData {
         return de(server);
     }
 
-    /** Les configs on el mod ha obert el PvP. Qui la canvia ha de cridar {@link #pvpCanviat()}. */
-    public Set<UUID> pvpObert() {
-        return pvpObert;
-    }
-
-    public void pvpCanviat() {
-        pvpCanviat = true;
-    }
-
     @Override
     public boolean isDirty() {
-        return registre.versio() != versioDesada || pvpCanviat;
+        return registre.versio() != versioDesada;
     }
 
     @Override
@@ -199,14 +185,7 @@ public final class Dades extends SavedData {
         }
         tag.put("guerres", guerres);
 
-        ListTag pvp = new ListTag();
-        for (UUID id : pvpObert) {
-            pvp.add(NbtUtils.createUUID(id));
-        }
-        tag.put("pvpObert", pvp);
-
         versioDesada = registre.versio();
-        pvpCanviat = false;
         return tag;
     }
 
@@ -338,13 +317,6 @@ public final class Dades extends SavedData {
         }
 
         Dades dades = new Dades(r);
-        for (Tag e : tag.getList("pvpObert", Tag.TAG_INT_ARRAY)) {
-            try {
-                dades.pvpObert.add(NbtUtils.loadUUID(e));
-            } catch (RuntimeException ex) {
-                PauITreva.LOG.error("Pau i Treva: no s'ha pogut llegir un id de pvpObert: {}", e, ex);
-            }
-        }
 
         PauITreva.LOG.info("Pau i Treva: {} països, {} relacions, {} propostes, {} guerres i {} entrades del diari",
                 r.paisos().size(), r.totesLesRelacions().size(), r.totesLesPropostes().size(), r.guerres().size(),

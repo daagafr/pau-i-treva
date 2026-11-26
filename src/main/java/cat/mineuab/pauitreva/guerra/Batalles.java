@@ -10,6 +10,7 @@ import cat.mineuab.pauitreva.model.Pais;
 import cat.mineuab.pauitreva.model.ParametresGuerra;
 import cat.mineuab.pauitreva.model.Registre;
 import cat.mineuab.pauitreva.mon.Dades;
+import cat.mineuab.pauitreva.opac.AccesGuerra;
 import cat.mineuab.pauitreva.opac.PontOpac;
 import cat.mineuab.pauitreva.opac.ZonaOpac;
 import cat.mineuab.pauitreva.ordres.Avisos;
@@ -27,7 +28,9 @@ import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.BossEvent;
@@ -168,28 +171,30 @@ public final class Batalles {
 
     // ---------------------------------------------------------------- Zona, PvP i barres
 
-    /** Posa la zona en disputa i el PvP com han d'estar ara. També arregla el que algú hagi canviat a mà. */
+    /**
+     * Posa la zona en disputa com ha d'estar ara: qui hi té accés ({@link AccesGuerra}) i les explosions a OPAC.
+     * També arregla el que algú hagi canviat a mà. El PvP no cal: el decideix {@link PvpGuerra} a cada cop.
+     */
     private static void reconciliar(MinecraftServer server, boolean oberta) {
         caldReconciliar = false;
         long ara = System.currentTimeMillis();
         Registre r = Dades.registre(server);
         boolean obrirZona = Config.o(Config.OBRIR_ZONA, true);
-        Set<UUID> pvp = new HashSet<>();
+        Map<ResourceLocation, Map<Long, Set<UUID>>> acces = new HashMap<>();
         for (Guerra g : r.guerres()) {
-            boolean lluita = oberta && g.activa(ara);
-            ZonaOpac.aplicarZona(server, g, lluita && obrirZona);
+            boolean lluita = oberta && g.activa(ara) && obrirZona;
+            ZonaOpac.aplicarZona(server, g, lluita);
             if (lluita) {
-                pvp.add(g.atacant());
-                pvp.add(g.defensor());
+                Set<UUID> bandols = Set.of(g.atacant(), g.defensor());
+                for (Chunk c : g.chunks()) {
+                    ResourceLocation dim = ResourceLocation.tryParse(c.dimensio());
+                    if (dim != null) {
+                        acces.computeIfAbsent(dim, k -> new HashMap<>()).put(ChunkPos.asLong(c.x(), c.z()), bandols);
+                    }
+                }
             }
         }
-        if (!Config.o(Config.OBRIR_PVP, true)) {
-            pvp.clear();
-        }
-        Dades dades = Dades.dades(server);
-        if (ZonaOpac.aplicarPvp(server, pvp, dades.pvpObert())) {
-            dades.pvpCanviat();
-        }
+        AccesGuerra.posar(acces);
     }
 
     /** Una barra de guerra per a cada bàndol de cada guerra activa, mentre la finestra és oberta. */
@@ -473,9 +478,11 @@ public final class Batalles {
         FinestresGuerra f = Config.finestres();
         r.add("Finestra: " + (f.oberta(ara) ? "oberta fins a les " + HORA.withZone(f.zona()).format(Instant.ofEpochMilli(f.tancament(ara)))
                 : "tancada; s'obre el " + Missatges.data(f.properaObertura(ara))) + " (" + f.zona() + ")");
-        r.add("Zona oberta en finestra: " + Config.o(Config.OBRIR_ZONA, true) + " · PvP: " + Config.o(Config.OBRIR_PVP, true)
-                + (ZonaOpac.pvpBloquejat() ? " (OPAC NO HO DEIXA: mira el registre)" : ""));
-        r.add("Configs amb el PvP obert pel mod: " + Dades.dades(server).pvpObert().size());
+        r.add("Zona en disputa per als bel·ligerants: " + Config.o(Config.OBRIR_ZONA, true) + " (ara "
+                + (AccesGuerra.buida() ? "tancada" : "oberta") + ")" + (ZonaOpac.explosionsBloquejades()
+                ? " · OPAC NO DEIXA OBRIR LES EXPLOSIONS: mira el registre" : ""));
+        r.add("PvP de guerra: " + Config.o(Config.OBRIR_PVP, true) + (PvpGuerra.aplicat ? " (l'excepció a OPAC funciona)"
+                : " (OPAC encara no ha preguntat res; si hi ha hagut combat, l'excepció no s'ha aplicat)"));
         r.add("Barres de guerra: " + barres.size() + " · jugadors seguits: " + quiets.size());
         return r;
     }

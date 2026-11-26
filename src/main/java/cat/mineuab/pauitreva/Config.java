@@ -83,13 +83,15 @@ public final class Config {
             .defineInRange("guerresMax", 2, 1, 20);
 
     public static final ModConfigSpec.BooleanValue OBRIR_ZONA = B
-            .comment("Durant la finestra, treure la protecció d'OPAC als chunks de l'objectiu (s'hi pot trencar, posar",
-                    "i explotar). Si és false, la guerra només dona punts.")
+            .comment("Durant la finestra, els dos països en guerra poden trencar, posar i obrir coses als chunks de",
+                    "l'objectiu, i hi entren les explosions (de qualsevol). Per a la resta, continuen protegits. Cal que",
+                    "«claims.protection.exceptions.blocksByExplosions» sigui a opConfigurablePlayerConfigOptions d'OPAC.",
+                    "Si és false, la guerra només dona punts.")
             .define("obrirZona", true);
 
     public static final ModConfigSpec.BooleanValue OBRIR_PVP = B
-            .comment("Durant la finestra, obrir el PvP a tot el territori dels dos països en guerra. Cal que",
-                    "«claims.protection.exceptions.playersByPlayers» sigui a opConfigurablePlayerConfigOptions d'OPAC.")
+            .comment("Durant la finestra, PvP entre els enemics d'una guerra (només entre ells) al territori dels seus dos",
+                    "països. Ni companys, ni neutrals, ni al territori d'un altre país.")
             .define("obrirPvp", true);
 
     public static final ModConfigSpec.IntValue AFK_MINUTS = B

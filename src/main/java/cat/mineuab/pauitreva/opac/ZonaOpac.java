@@ -21,17 +21,17 @@ import xaero.pac.common.server.player.config.api.v2.IPlayerConfigAPI;
 import xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions;
 
 /**
- * La part d'OPAC de la guerra: el territori com a chunks del model, la zona en disputa i el PvP.
+ * La part d'OPAC de la guerra: el territori com a chunks del model i la zona en disputa.
  *
  * <p><b>Zona en disputa.</b> En declarar una conquesta, cada chunk de l'objectiu passa a una sub-config
  * de guerra del seu amo ({@link #sub}) (el mateix amo, sense tocar els chunks forçats), i es recorda la sub-config que
- * tenia. Mentre la finestra és oberta, aquesta sub-config té {@code protectClaimedChunks = false}: s'hi pot
- * trencar, posar i explotar. Fora de la finestra torna a protegir. En signar la pau, els chunks cedits passen al
- * líder del guanyador i els altres tornen a la seva sub-config.
+ * tenia. La sub-config continua protegida: qui hi pot trencar, posar i obrir coses durant la finestra ho decideix
+ * {@link AccesGuerra} (només els dos països en guerra). El que sí que canvia durant la finestra són les explosions
+ * ({@code blocksByExplosions} i {@code entitiesByExplosions}), que no es poden filtrar per qui les fa. La primera
+ * opció només la pot canviar un mod si és a {@code opConfigurablePlayerConfigOptions} d'OPAC. En signar la pau, els
+ * chunks cedits passen al líder del guanyador i els altres tornen a la seva sub-config.
  *
- * <p><b>PvP.</b> L'opció {@code playersByPlayers} no la poden canviar els jugadors (ni, per defecte, els mods):
- * cal que sigui a {@code opConfigurablePlayerConfigOptions} de la config del servidor d'OPAC. Si hi és, durant la
- * finestra es posa a {@code true} a la config de tots els amos de claims dels països en guerra.
+ * <p>El PvP de la guerra no passa per aquí: el fa {@code ProteccioOpacMixin}.
  */
 public final class ZonaOpac {
 
@@ -47,7 +47,9 @@ public final class ZonaOpac {
     }
     private static final String MAIN = "main";
 
-    private static boolean pvpBloquejat;
+    /** Els canvis que OPAC ha rebutjat, perquè l'avís surti un sol cop i no cada 3 s. */
+    private static final Set<String> REBUTJATS = new HashSet<>();
+    private static boolean explosionsBloquejades;
 
     private ZonaOpac() {
     }
@@ -115,8 +117,9 @@ public final class ZonaOpac {
     }
 
     /**
-     * Obre ({@code oberta}) o tanca la zona: {@code protectClaimedChunks} de la sub-config de guerra dels amos
-     * dels chunks de l'objectiu. També torna a posar a la sub-config els chunks que algú n'hagi tret.
+     * Obre ({@code oberta}) o tanca la zona a les explosions, a la sub-config de guerra dels amos dels chunks de
+     * l'objectiu, i la deixa protegida (l'accés dels bel·ligerants el dona {@link AccesGuerra}). També torna a posar
+     * a la sub-config els chunks que algú n'hagi tret.
      */
     public static void aplicarZona(MinecraftServer server, Guerra g, boolean oberta) {
         IServerClaimsManagerAPI claims = PontOpac.api(server).getServerClaimsManager();
@@ -136,7 +139,11 @@ public final class ZonaOpac {
                         claim.isForceloadable());
             }
             if (amos.add(claim.getPlayerId())) {
-                posar(sub, PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, !oberta);
+                posar(sub, PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, true);
+                posar(sub, PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS,
+                        oberta || perDefecte(server, PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS));
+                posar(sub, PlayerConfigOptions.CLAIM_EXCEPTION_ENTITIES_BY_EXPLOSIONS,
+                        oberta || perDefecte(server, PlayerConfigOptions.CLAIM_EXCEPTION_ENTITIES_BY_EXPLOSIONS));
             }
         }
     }
@@ -173,7 +180,12 @@ public final class ZonaOpac {
         for (UUID amo : amos) {
             IPlayerConfigAPI config = config(server, amo);
             if (config != null && config.subConfigExists(sub(g))) {
-                posar(config.getSubConfig(sub(g)), PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, true);
+                IPlayerConfigAPI sub = config.getSubConfig(sub(g));
+                posar(sub, PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, true);
+                posar(sub, PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS,
+                        perDefecte(server, PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS));
+                posar(sub, PlayerConfigOptions.CLAIM_EXCEPTION_ENTITIES_BY_EXPLOSIONS,
+                        perDefecte(server, PlayerConfigOptions.CLAIM_EXCEPTION_ENTITIES_BY_EXPLOSIONS));
             }
         }
     }
@@ -199,65 +211,18 @@ public final class ZonaOpac {
         return c == 0 ? 0x010101 : c;
     }
 
-    // ---------------------------------------------------------------- PvP
-
-    /**
-     * Obre el PvP a la config de tots els membres dels països de {@code oberts} i el torna a tancar a les
-     * configs on l'havíem obert i que ja no hi han de ser.
-     *
-     * @param obertPerNosaltres les configs on l'ha obert el mod (es desa al món, perquè si el servidor cau amb
-     *                          la finestra oberta, en tornar s'han de tancar)
-     * @return si la llista {@code obertPerNosaltres} ha canviat
-     */
-    public static boolean aplicarPvp(MinecraftServer server, Set<UUID> oberts, Set<UUID> obertPerNosaltres) {
-        boolean canviat = false;
-        Set<UUID> membres = new HashSet<>();
-        for (UUID pais : oberts) {
-            IServerPartyAPI partit = PontOpac.partit(server, pais);
-            if (partit != null) {
-                partit.getMemberInfoStream().forEach(m -> membres.add(m.getUUID()));
-            }
-        }
-        for (UUID membre : membres) {
-            IPlayerConfigAPI config = config(server, membre);
-            if (config == null || Boolean.TRUE.equals(config.getRaw(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS))) {
-                continue; // ja és obert (per nosaltres o per un OP)
-            }
-            IPlayerConfigAPI.SetResult r = config.tryToSet(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS, true);
-            if (r == IPlayerConfigAPI.SetResult.SUCCESS) {
-                canviat |= obertPerNosaltres.add(membre);
-            } else if (!pvpBloquejat) {
-                pvpBloquejat = true;
-                PauITreva.LOG.warn("Pau i Treva: OPAC no deixa obrir el PvP de la guerra ({}). Afegeix "
-                        + "\"claims.protection.exceptions.playersByPlayers\" a opConfigurablePlayerConfigOptions "
-                        + "a openpartiesandclaims-server.toml", r);
-            }
-        }
-        for (UUID membre : Set.copyOf(obertPerNosaltres)) {
-            if (membres.contains(membre)) {
-                continue;
-            }
-            IPlayerConfigAPI config = config(server, membre);
-            if (config != null) {
-                // No tryToReset: torna al valor de fàbrica d'OPAC (true), no al de la config per defecte del
-                // servidor (false a MineUAB). Es posa el de la config per defecte.
-                IPlayerConfigAPI perDefecte = PontOpac.api(server).getPlayerConfigManager().getDefaultConfig();
-                Boolean valor = perDefecte == null ? Boolean.FALSE
-                        : perDefecte.getEffective(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS);
-                config.tryToSet(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS, Boolean.TRUE.equals(valor));
-            }
-            obertPerNosaltres.remove(membre);
-            canviat = true;
-        }
-        return canviat;
-    }
-
-    /** Si OPAC ha dit que no deixa obrir el PvP (cal tocar la config del servidor d'OPAC). */
-    public static boolean pvpBloquejat() {
-        return pvpBloquejat;
-    }
-
     // ---------------------------------------------------------------- Ajudes
+
+    /** Si OPAC no ha deixat obrir la zona a les explosions (cal tocar la config del servidor d'OPAC). */
+    public static boolean explosionsBloquejades() {
+        return explosionsBloquejades;
+    }
+
+    /** El valor d'una opció a la config per defecte dels jugadors del servidor (no el de fàbrica d'OPAC). */
+    private static boolean perDefecte(MinecraftServer server, xaero.pac.common.server.player.config.api.v2.IPlayerConfigOptionSpecAPI<Boolean> opcio) {
+        IPlayerConfigAPI d = PontOpac.api(server).getPlayerConfigManager().getDefaultConfig();
+        return d != null && Boolean.TRUE.equals(d.getEffective(opcio));
+    }
 
     private static IPlayerConfigAPI config(MinecraftServer server, UUID jugador) {
         return PontOpac.api(server).getPlayerConfigManager().getLoadedConfig(jugador);
@@ -268,10 +233,20 @@ public final class ZonaOpac {
         if (java.util.Objects.equals(config.getRaw(opcio), valor)) {
             return;
         }
+        String clau = config.getPlayerId() + "/" + config.getSubId() + " " + opcio.getId() + " " + valor;
+        if (REBUTJATS.contains(clau)) {
+            return;
+        }
         IPlayerConfigAPI.SetResult r = config.tryToSet(opcio, valor);
         if (r != IPlayerConfigAPI.SetResult.SUCCESS) {
-            PauITreva.LOG.warn("Pau i Treva: OPAC no ha deixat posar {} = {} a {}/{}: {}", opcio.getId(), valor,
-                    config.getPlayerId(), config.getSubId(), r);
+            REBUTJATS.add(clau);
+            if (opcio == PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS) {
+                explosionsBloquejades = true;
+            }
+            PauITreva.LOG.warn("Pau i Treva: OPAC no ha deixat posar {} = {} a {}/{}: {}{}", opcio.getId(), valor,
+                    config.getPlayerId(), config.getSubId(), r, opcio == PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS
+                            ? ". Afegeix \"claims.protection.exceptions.blocksByExplosions\" a opConfigurablePlayerConfigOptions"
+                            + " a openpartiesandclaims-server.toml" : "");
         }
     }
 

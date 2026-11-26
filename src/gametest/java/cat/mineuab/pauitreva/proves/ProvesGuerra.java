@@ -74,6 +74,11 @@ public final class ProvesGuerra {
         new EmbeddedChannel(connexio);
         nivell.getServer().getPlayerList().placeNewPlayer(connexio, j, galeta);
         j.setGameMode(GameType.SURVIVAL);
+        // En entrar, Minecraft dona 3 s d'invulnerabilitat que es descompten a cada tic del jugador; un de
+        // mentida no té client que el faci avançar.
+        for (int i = 0; i < 61; i++) {
+            j.tick();
+        }
         return j;
     }
 
@@ -96,12 +101,24 @@ public final class ProvesGuerra {
         return nivell.getBlockState(pos).is(Blocks.STONE);
     }
 
+    private static final net.minecraft.world.entity.projectile.Arrow[] FLETXA = new net.minecraft.world.entity.projectile.Arrow[1];
+
+    /** {@code qui} pega {@code a} (un cop de puny normal) i diu si li ha fet mal. */
+    static boolean ferMal(ServerPlayer qui, ServerPlayer a) {
+        a.setHealth(a.getMaxHealth());
+        a.invulnerableTime = 0;
+        qui.attack(a);
+        return a.getHealth() < a.getMaxHealth();
+    }
+
     static BlockPos centre(int chunkX, int chunkZ) {
         return new BlockPos(chunkX * 16 + 8, -59, chunkZ * 16 + 8);
     }
 
     static void anar(ServerPlayer j, ServerLevel nivell, BlockPos pos) {
         j.teleportTo(nivell, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0, 0);
+        // Que els chunks del voltant es carreguin i es processin (ho faria el tic del jugador).
+        nivell.getChunkSource().move(j);
     }
 
     static void cert(GameTestHelper h, boolean condicio, String que) {
@@ -121,9 +138,9 @@ public final class ProvesGuerra {
         Registre r = Dades.registre(server);
         long ara = System.currentTimeMillis();
 
-        // El servidor de proves arrenca amb opac/openpartiesandclaims-server.toml: el mod pot obrir el PvP.
+        // El servidor de proves arrenca amb opac/openpartiesandclaims-server.toml: el mod pot obrir les explosions.
         cert(h, ServerConfig.CONFIG.opConfigurablePlayerConfigOptions.get()
-                .contains("claims.protection.exceptions.playersByPlayers"), "la config d'OPAC de proves no s'ha carregat");
+                .contains("claims.protection.exceptions.blocksByExplosions"), "la config d'OPAC de proves no s'ha carregat");
         // Captura ràpida per no haver d'esperar quatre minuts.
         Config.CAPTURA_BASE.set(5000);
         Config.CAPTURA_MAX.set(5000);
@@ -132,9 +149,12 @@ public final class ProvesGuerra {
 
         ServerPlayer a = jugador(h, "Atacant");
         ServerPlayer b = jugador(h, "Defensor");
+        ServerPlayer company = jugador(h, "Company");   // de l'atacant
+        ServerPlayer neutral = jugador(h, "Neutral");   // sense país
         IServerPartyAPI pa = opac.getPartyManager().createPartyForOwner(a);
         IServerPartyAPI pb = opac.getPartyManager().createPartyForOwner(b);
         cert(h, pa != null && pb != null, "OPAC no ha creat les parties");
+        pa.addMember(company.getUUID(), xaero.pac.common.parties.party.member.PartyMemberRank.MEMBER, "Company");
         cert(h, r.fundar(pa.getId(), "Atacants", "ATA", 0x2255CC, ara) == Resultat.FET, "fundar ATA");
         cert(h, r.fundar(pb.getId(), "Defensors", "DEF", 0xCC2222, ara) == Resultat.FET, "fundar DEF");
         Pais ata = r.pais(pa.getId()).orElseThrow();
@@ -197,7 +217,10 @@ public final class ProvesGuerra {
         BlockPos casaB = centre(x0 + 4, z);
         anar(a, nivell, casaA);
         anar(b, nivell, casaB);
+        anar(company, nivell, casaA.offset(2, 0, 0));
+        anar(neutral, nivell, casaB.offset(2, 0, 0));
         cert(h, protegeixAtac(opac, a, b), "hi ha PvP abans de la finestra");
+        cert(h, !ferMal(a, b), "l'atacant fa mal al defensor abans de la finestra");
         cert(h, protegeixBloc(opac, a, disputa), "es pot trencar la zona en disputa abans de la finestra");
         cert(h, sobreviuExplosio(nivell, disputa), "una explosió trenca la zona en disputa abans de la finestra");
 
@@ -210,22 +233,41 @@ public final class ProvesGuerra {
         h.startSequence()
                 .thenExecuteAfter(30, () -> {
                     cert(h, Batalles.finestraOberta(), "la finestra no s'ha obert");
-                    cert(h, Boolean.FALSE.equals(sub.getEffective(PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS)),
-                            "la zona no s'ha obert amb la finestra");
-                    cert(h, Boolean.TRUE.equals(configA.getEffective(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS)),
-                            "el PvP de l'atacant no s'ha obert");
-                    cert(h, Boolean.TRUE.equals(configB.getEffective(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS)),
-                            "el PvP del defensor no s'ha obert");
-                    // Amb la finestra oberta: PvP entre tots dos, la zona en disputa oberta i la resta protegida.
+                    cert(h, Boolean.TRUE.equals(sub.getEffective(PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS)),
+                            "la zona ha perdut la protecció d'OPAC (ara és només per als bel·ligerants)");
+                    // PvP: només entre enemics, i amb dany de veritat.
                     cert(h, !protegeixAtac(opac, a, b), "OPAC encara no deixa atacar el defensor");
                     cert(h, !protegeixAtac(opac, b, a), "OPAC encara no deixa atacar l'atacant");
-                    cert(h, !protegeixBloc(opac, a, disputa), "no es pot trencar la zona en disputa amb la finestra oberta");
+                    cert(h, ferMal(a, b), "l'atacant no fa mal al defensor amb la finestra oberta");
+                    cert(h, ferMal(b, a), "el defensor no fa mal a l'atacant amb la finestra oberta");
+                    cert(h, !ferMal(company, a), "un company fa mal al seu líder");
+                    cert(h, !ferMal(neutral, b), "un neutral fa mal al defensor");
+                    cert(h, !ferMal(b, neutral), "el defensor fa mal a un neutral");
+                    // Zona en disputa: només per als dos països.
+                    cert(h, !protegeixBloc(opac, a, disputa), "l'atacant no pot trencar la zona en disputa");
+                    cert(h, !protegeixBloc(opac, b, disputa), "el defensor no pot trencar la seva zona en disputa");
+                    cert(h, protegeixBloc(opac, neutral, disputa), "un neutral pot trencar la zona en disputa");
                     cert(h, protegeixBloc(opac, a, casaB.offset(2, 0, 0)), "es pot trencar fora de l'objectiu");
                     cert(h, !sobreviuExplosio(nivell, disputa), "les explosions no trenquen la zona en disputa");
                     cert(h, sobreviuExplosio(nivell, casaB.offset(2, 0, 0)), "les explosions trenquen fora de l'objectiu");
+                    // Una fletxa de l'atacant al defensor.
+                    b.setHealth(b.getMaxHealth());
+                    b.invulnerableTime = 0;
+                    net.minecraft.world.entity.projectile.Arrow fletxa = new net.minecraft.world.entity.projectile.Arrow(
+                            nivell, a, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+                    fletxa.setPos(b.getX() - 3, b.getY() + 1.2, b.getZ());
+                    fletxa.shoot(1, 0, 0, 2.0f, 0);
+                    nivell.addFreshEntity(fletxa);
+                    FLETXA[0] = fletxa;
+                })
+                .thenExecuteAfter(10, () -> {
+                    var f = FLETXA[0];
+                    cert(h, b.getHealth() < b.getMaxHealth(), "la fletxa de l'atacant no ha fet mal al defensor (fletxa a "
+                            + f.position() + ", treta: " + f.getRemovalReason() + ", a terra: " + f.isNoGravity()
+                            + ", defensor a " + b.position() + ", tics: " + f.tickCount + ")");
                     a.teleportTo(nivell, px, -59, pz, 0, 0);
                 })
-                .thenExecuteAfter(80, () -> {
+                .thenExecuteAfter(70, () -> {
                     cert(h, g.control(c2) == Guerra.CONTROL_MAX, "l'atacant no ha capturat el chunk (control "
                             + g.control(c2) + ")");
                     cert(h, g.control(c3) == 0, "s'ha capturat un chunk on no hi havia ningú");
@@ -262,12 +304,12 @@ public final class ProvesGuerra {
                             "la sub-config de guerra no ha tornat a protegir");
                 })
                 .thenExecuteAfter(30, () -> {
-                    cert(h, !Boolean.TRUE.equals(configA.getRaw(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS)),
-                            "el PvP no s'ha tancat després de la pau");
-                    cert(h, Dades.dades(server).pvpObert().isEmpty(), "queden configs amb el PvP obert");
                     anar(a, nivell, casaA);
                     anar(b, nivell, casaB);
                     cert(h, protegeixAtac(opac, a, b), "després de la pau encara hi ha PvP");
+                    cert(h, !ferMal(a, b), "després de la pau l'atacant encara fa mal al defensor");
+                    cert(h, !Boolean.TRUE.equals(sub.getEffective(PlayerConfigOptions.CLAIM_EXCEPTION_BLOCKS_BY_EXPLOSIONS)),
+                            "la zona continua oberta a les explosions després de la pau");
                     // El chunk conquerit ara és de l'atacant: el defensor ja no hi pot trencar res.
                     cert(h, protegeixBloc(opac, b, disputa), "el defensor pot trencar el chunk que ha perdut");
                     Batalles.forcarFinestra(null);

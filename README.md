@@ -12,7 +12,8 @@ El nom ve de la Pau i Treva de Déu (Toluges, 1027): dies en què no es podia ll
   per rang. El nom i el color del país es posen als claims i a la party del líder (al Xaero, el país surt d'un sol color).
 - **Diplomàcia**: aliances (també aliats a OPAC, en tots dos sentits), pactes de no agressió amb data de final, treves
   després de cada pau i un diari diplomàtic públic.
-- **Guerra** (vegeu més avall): declaració amb objectiu, preparació, finestres, zona en disputa, PvP, captura per presència,
+- **Guerra** (vegeu més avall): declaració amb objectiu, preparació, finestres, zona en disputa i PvP només per als
+  bel·ligerants, captura per presència,
   punts, baixes, vides, pau proposada, imposada o automàtica, rendició, traspàs de chunks i humiliació.
 - **Pantalla del joc** (tecla N), dibuixada pel servidor: País, Membres, Diplomàcia, Guerres i Diari. Tot el que fan les
   ordres es pot fer des d'aquí.
@@ -81,8 +82,10 @@ Per defecte, `editar` i `diplomacia` són de ministre; `trencar`, `guerra` i `pa
 2. **Preparació** (24 h). Els chunks de l'objectiu passen a una sub-config d'OPAC de guerra del seu amo (`pit-guerra-N`, una
    per guerra), amb el nom «(en disputa)» i el color barrejat amb vermell. Ningú no els pot reclamar ni desreclamar fins a la pau.
 3. **Finestres** (dl–dv 18:00–23:00, ds–dg 12:00–23:00, hora de Madrid). Mentre és oberta:
-   - la zona en disputa no té protecció: s'hi pot trencar, posar i explotar (per a tothom);
-   - hi ha PvP a tot el territori dels dos països (per a tothom); la resta del territori continua protegit;
+   - a la zona en disputa, els membres dels dos països en guerra hi poden trencar, posar i obrir coses; per a la resta
+     continua protegida. Hi entren les explosions (aquestes, de qualsevol: no es poden filtrar per qui les fa);
+   - PvP només entre enemics, i només al territori dels dos països (a la natura ja n'hi ha sempre): ni companys entre
+     ells, ni neutrals, ni al territori d'un tercer país. Val per als cops i les fletxes;
    - **captura per presència**: a cada chunk de l'objectiu i a les dues capitals, qui hi és fa avançar o recular el control
      (un atacant sol pren un chunk en uns 4 minuts; com més atacants, més de pressa, però amb un màxim; els defensors el fan
      recular). Els AFK (5 minuts quiets) i qui ha gastat les 5 vides de la finestra no capturen. Als punts disputats, tothom brilla;
@@ -107,9 +110,13 @@ humiliació, mida de l'objectiu, guerres per país, si s'obre la zona i el PvP, 
 
 [`opac/openpartiesandclaims-server.toml`](opac/openpartiesandclaims-server.toml) té les opcions d'OPAC que cal canviar al
 Create (`primaryPartySystem = "default"`, `partyOwnedClaims = true`, el bonus de chunks forçats per membre i
-`claims.protection.exceptions.playersByPlayers` a `opConfigurablePlayerConfigOptions`, que és el que deixa obrir el PvP de la
-guerra). Sense aquesta darrera, la guerra funciona igual però sense PvP fora de la zona en disputa (ho diu
+`claims.protection.exceptions.blocksByExplosions` a `opConfigurablePlayerConfigOptions`, que és el que deixa obrir la zona en
+disputa a les explosions). Sense aquesta darrera, la guerra funciona igual però les explosions no hi entren (ho diu
 `/guerra admin diagnosi`). Abans d'activar `partyOwnedClaims`: còpia del món i `/nacio admin migra prova`.
+
+El PvP de guerra no necessita cap opció d'OPAC: el mod hi afegeix una excepció amb un mixin a la funció d'OPAC que decideix
+si una entitat en pot atacar una altra (`ProteccioOpacMixin`, fet per a OPAC 0.33.0). Si una versió nova d'OPAC la canvia, el
+joc no peta: només no hi ha PvP de guerra, i `/guerra admin diagnosi` ho diu.
 
 ## Dades
 
@@ -121,7 +128,8 @@ chunk) i les configs on el mod ha obert el PvP (per tancar-lo si el servidor cau
 - `./gradlew test`: el model (regles de països, diplomàcia, guerra, batalla, territori, finestres i API), sense Minecraft.
 - `./gradlew runProves`: un servidor dedicat de proves amb OPAC i la config d'OPAC del Create, que fa les GameTests i s'atura;
   el resultat és a `build/proves-servidor/resultat-proves.txt`. Hi ha una guerra sencera (PvP, trencar i explotar dins i fora
-  de la zona, captura, baixa, API, pau i traspàs), una rendició, la migració i el canvi de líder, i les pestanyes de la pantalla.
+  de la zona, captura, baixa, API, pau i traspàs; PvP amb cops i fletxes entre enemics i no amb companys ni neutrals; zona
+  per als bel·ligerants i no per als neutrals), una rendició, la migració i el canvi de líder, i les pestanyes de la pantalla.
 - `./gradlew runProvaClient`: un client que entra al món `build/proves-client/saves/prova`, obre la pantalla i en fa captures
   a `build/proves-client/screenshots`. Necessita una pantalla (`DISPLAY`); sense ningú davant, una virtual (Xvfb).
 
@@ -140,8 +148,8 @@ En local cal un JDK 21 (`./gradlew build`; al portàtil n'hi ha un a `~/.local/s
 
 - `model/`: països, relacions, propostes, diari, guerres, batalla (`Registre`, `Guerra`, `ParametresGuerra`), geometria de
   l'objectiu (`Territori`), finestres i API (`Exportacio`). Sense Minecraft, amb proves JUnit.
-- `opac/`: tot el que es llegeix o es canvia d'OPAC (`PontOpac`), la zona en disputa i el PvP (`ZonaOpac`) i el veto als
-  claims en disputa (`VetClaims`).
+- `opac/`: tot el que es llegeix o es canvia d'OPAC (`PontOpac`), la zona en disputa (`ZonaOpac`, i qui hi té accés:
+  `AccesGuerra`) i el veto als claims en disputa (`VetClaims`). `mixin/ProteccioOpacMixin` i `guerra/PvpGuerra`: el PvP de guerra.
 - `guerra/`: les operacions de guerra senceres (`Guerres`) i la batalla en directe (`Batalles`).
 - `pantalla/`: la pantalla que fa el servidor (`Vistes`) i els paquets (`Xarxa`); `client/`: la tecla i el dibuix.
 - `mon/Dades`: desar i carregar al món. `ordres/`: `/nacio`, `/diplomacia`, `/guerra`, textos i avisos.
