@@ -537,9 +537,17 @@ public final class Registre {
         if (guerresDe(atacant).size() >= p.guerresMax() || guerresDe(defensor).size() >= p.guerresMax()) {
             return Resultat.MASSA_GUERRES;
         }
+        if (guerres.values().stream().anyMatch(x -> x.chunks().stream().anyMatch(chunks::contains))) {
+            return Resultat.JA_EN_DISPUTA;
+        }
         long inici = ara + p.preparacio();
         Guerra g = new Guerra(UUID.randomUUID(), atacant, defensor, objectiu, chunks, ara, inici,
                 p.durada() > 0 ? inici + p.durada() : 0, capitalAtacant, capitalDefensor, 0);
+        int zona = 0;
+        while (zonaOcupada(zona)) {
+            zona++;
+        }
+        g.posarZona(zona);
         guerres.put(g.id(), g);
         Parella parella = Parella.de(atacant, defensor);
         relacions.put(parella, new EstatRelacio(TipusRelacio.GUERRA, ara, 0));
@@ -563,6 +571,10 @@ public final class Registre {
         g.avancarInici(ara);
         canvi();
         return Resultat.FET;
+    }
+
+    private boolean zonaOcupada(int zona) {
+        return guerres.values().stream().anyMatch(x -> x.zona() == zona);
     }
 
     /** Suma punts de guerra al país {@code perAquest} (i els treu al seu enemic). */

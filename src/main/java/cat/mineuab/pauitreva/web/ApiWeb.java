@@ -40,7 +40,10 @@ public final class ApiWeb {
     public static void engegar(int port) {
         aturar();
         try {
-            HttpServer s = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
+            // 127.0.0.1 explícit: NeoForge arrenca la JVM amb preferIPv6Addresses=system, i llavors
+            // getLoopbackAddress() torna ::1 i el túnel (que va a 127.0.0.1) no hi arribaria.
+            InetAddress local = InetAddress.getByAddress("localhost", new byte[] {127, 0, 0, 1});
+            HttpServer s = HttpServer.create(new InetSocketAddress(local, port), 0);
             s.createContext("/", ApiWeb::respondre);
             s.setExecutor(Executors.newSingleThreadExecutor(r -> {
                 Thread t = new Thread(r, "PauITreva-API");

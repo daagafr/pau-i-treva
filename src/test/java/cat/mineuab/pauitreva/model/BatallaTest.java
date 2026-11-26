@@ -192,8 +192,27 @@ class BatallaTest {
         r.fundar(ara, "Aragó", "ARA", 0xFFFF00, T0);
         r.fundar(tres, "Tercer", "TRE", 0x00FF00, T0);
         assertEquals(Resultat.DECLARADA, r.declararGuerra(ara, occ, TipusObjectiu.HUMILIACIO, Set.of(), T0, P, null, null));
+        // Cada guerra oberta té la seva zona a OPAC.
+        assertEquals(0, g.zona());
+        assertEquals(1, r.guerraEntre(ara, occ).orElseThrow().zona());
         // Occitània ja en té dues (el màxim per defecte).
         assertEquals(Resultat.MASSA_GUERRES, r.declararGuerra(tres, occ, TipusObjectiu.HUMILIACIO, Set.of(), T0, P, null, null));
+    }
+
+    @Test
+    void unChunkNomesPotSerEnUnaGuerra() {
+        UUID ara = UUID.randomUUID();
+        r.fundar(ara, "Aragó", "ARA", 0xFFFF00, T0);
+        assertEquals(Resultat.JA_EN_DISPUTA, r.declararGuerra(ara, occ, TipusObjectiu.CONQUESTA, Set.of(b), T0, P, null, null));
+    }
+
+    @Test
+    void lesZonesEsReaprofiten() {
+        UUID ara = UUID.randomUUID();
+        r.fundar(ara, "Aragó", "ARA", 0xFFFF00, T0);
+        r.ferPau(g.id(), cat, Termes.blanca(), false, T0, P.treva());
+        r.declararGuerra(ara, occ, TipusObjectiu.HUMILIACIO, Set.of(), T0, P, null, null);
+        assertEquals(0, r.guerraEntre(ara, occ).orElseThrow().zona());
     }
 
     @Test

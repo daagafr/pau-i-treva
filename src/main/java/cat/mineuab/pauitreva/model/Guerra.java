@@ -38,6 +38,8 @@ public final class Guerra {
     private final Chunk capitalAtacant;
     private final Chunk capitalDefensor;
     private int milpunts;
+    /** Quina zona de guerra fa servir a OPAC (una sub-config per guerra, que es reaprofiten). */
+    private int zona;
     private final Map<Chunk, Integer> control = new LinkedHashMap<>();
     private int controlCapitalDefensor;
     private int controlCapitalAtacant;
@@ -210,6 +212,15 @@ public final class Guerra {
         return 0;
     }
 
+    /** El número de la zona de guerra a OPAC: dues guerres obertes alhora mai no tenen el mateix. */
+    public int zona() {
+        return zona;
+    }
+
+    void posarZona(int zona) {
+        this.zona = zona;
+    }
+
     public int mortsDe(UUID jugador) {
         return morts.getOrDefault(jugador, 0);
     }
@@ -276,7 +287,8 @@ public final class Guerra {
 
     /** Per carregar les dades del món. */
     public void carregarEstat(Map<Chunk, Integer> controls, int capitalDefensor, int capitalAtacant,
-                              int baixesAtacant, int baixesDefensor, Map<Chunk, String> subconfigs) {
+                              int baixesAtacant, int baixesDefensor, Map<Chunk, String> subconfigs, int zona) {
+        this.zona = zona;
         controls.forEach((c, v) -> {
             if (control.containsKey(c)) {
                 control.put(c, limitaControl(v));

@@ -24,7 +24,7 @@ import xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions;
  * La part d'OPAC de la guerra: el territori com a chunks del model, la zona en disputa i el PvP.
  *
  * <p><b>Zona en disputa.</b> En declarar una conquesta, cada chunk de l'objectiu passa a una sub-config
- * {@value #SUB} del seu amo (el mateix amo, sense tocar els chunks forçats), i es recorda la sub-config que
+ * de guerra del seu amo ({@link #sub}) (el mateix amo, sense tocar els chunks forçats), i es recorda la sub-config que
  * tenia. Mentre la finestra és oberta, aquesta sub-config té {@code protectClaimedChunks = false}: s'hi pot
  * trencar, posar i explotar. Fora de la finestra torna a protegir. En signar la pau, els chunks cedits passen al
  * líder del guanyador i els altres tornen a la seva sub-config.
@@ -35,8 +35,16 @@ import xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions;
  */
 public final class ZonaOpac {
 
-    /** Id de la sub-config de guerra (OPAC: lletres, xifres, - i _, fins a 16). */
-    public static final String SUB = "pit-guerra";
+    /**
+     * Prefix de les sub-configs de guerra (OPAC: lletres, xifres, - i _, fins a 16). N'hi ha una per guerra
+     * oberta ({@link Guerra#zona()}), perquè cada guerra obre i tanca la seva zona sense tocar la d'una altra.
+     */
+    public static final String PREFIX = "pit-guerra-";
+
+    /** La sub-config de la zona d'aquesta guerra. */
+    public static String sub(Guerra g) {
+        return PREFIX + g.zona();
+    }
     private static final String MAIN = "main";
 
     private static boolean pvpBloquejat;
@@ -92,10 +100,10 @@ public final class ZonaOpac {
             }
             IPlayerConfigAPI actual = config.getEffectiveSubConfig(claim.getSubConfigIndex());
             String abans = actual.getSubId() == null ? MAIN : actual.getSubId();
-            if (SUB.equals(abans)) {
-                continue; // ja hi és (una altra guerra o una càrrega repetida)
+            if (abans.startsWith(PREFIX)) {
+                continue; // ja hi és (una càrrega repetida)
             }
-            IPlayerConfigAPI sub = subDeGuerra(config, defensor);
+            IPlayerConfigAPI sub = subDeGuerra(config, sub(g), defensor);
             if (sub == null) {
                 continue;
             }
@@ -119,10 +127,10 @@ public final class ZonaOpac {
                 continue;
             }
             IPlayerConfigAPI config = config(server, claim.getPlayerId());
-            if (config == null || !config.subConfigExists(SUB)) {
+            if (config == null || !config.subConfigExists(sub(g))) {
                 continue;
             }
-            IPlayerConfigAPI sub = config.getSubConfig(SUB);
+            IPlayerConfigAPI sub = config.getSubConfig(sub(g));
             if (claim.getSubConfigIndex() != sub.getSubIndex()) {
                 claims.claim(ResourceLocation.parse(c.dimensio()), claim.getPlayerId(), sub.getSubIndex(), c.x(), c.z(),
                         claim.isForceloadable());
@@ -161,19 +169,19 @@ public final class ZonaOpac {
                 claims.claim(dim, claim.getPlayerId(), index, c.x(), c.z(), claim.isForceloadable());
             }
         }
-        // La sub-config es queda (protegida) per a la propera guerra.
+        // La sub-config es queda (protegida) per a la propera guerra que tingui aquest número.
         for (UUID amo : amos) {
             IPlayerConfigAPI config = config(server, amo);
-            if (config != null && config.subConfigExists(SUB)) {
-                posar(config.getSubConfig(SUB), PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, true);
+            if (config != null && config.subConfigExists(sub(g))) {
+                posar(config.getSubConfig(sub(g)), PlayerConfigOptions.PROTECT_CLAIMED_CHUNKS, true);
             }
         }
     }
 
-    private static IPlayerConfigAPI subDeGuerra(IPlayerConfigAPI config, Pais defensor) {
-        IPlayerConfigAPI sub = config.subConfigExists(SUB) ? config.getSubConfig(SUB) : config.createSubConfig(SUB);
+    private static IPlayerConfigAPI subDeGuerra(IPlayerConfigAPI config, String id, Pais defensor) {
+        IPlayerConfigAPI sub = config.subConfigExists(id) ? config.getSubConfig(id) : config.createSubConfig(id);
         if (sub == null) {
-            PauITreva.LOG.warn("Pau i Treva: no s'ha pogut crear la sub-config {} de {} (límit de sub-configs?)", SUB,
+            PauITreva.LOG.warn("Pau i Treva: no s'ha pogut crear la sub-config {} de {} (límit de sub-configs?)", id,
                     config.getPlayerId());
             return null;
         }
@@ -231,7 +239,12 @@ public final class ZonaOpac {
             }
             IPlayerConfigAPI config = config(server, membre);
             if (config != null) {
-                config.tryToReset(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS);
+                // No tryToReset: torna al valor de fàbrica d'OPAC (true), no al de la config per defecte del
+                // servidor (false a MineUAB). Es posa el de la config per defecte.
+                IPlayerConfigAPI perDefecte = PontOpac.api(server).getPlayerConfigManager().getDefaultConfig();
+                Boolean valor = perDefecte == null ? Boolean.FALSE
+                        : perDefecte.getEffective(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS);
+                config.tryToSet(PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS, Boolean.TRUE.equals(valor));
             }
             obertPerNosaltres.remove(membre);
             canviat = true;

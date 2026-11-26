@@ -15,6 +15,7 @@ public enum Resultat {
     EN_PACTE,
     OBJECTIU_INVALID,
     MASSA_GUERRES,
+    JA_EN_DISPUTA,
     NO_HI_HA_GUERRA,
     PUNTS_INSUFICIENTS,
     JA_EXISTEIX,

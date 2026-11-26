@@ -160,6 +160,7 @@ public final class Dades extends SavedData {
             t.putLong("inici", g.inici());
             t.putLong("limit", g.limit());
             t.putInt("milpunts", g.milpunts());
+            t.putInt("zona", g.zona());
             if (g.capitalAtacant() != null) {
                 t.put("capitalAtacant", chunk(g.capitalAtacant()));
             }
@@ -317,7 +318,7 @@ public final class Dades extends SavedData {
                     }
                 }
                 g.carregarEstat(control, t.getInt("controlCapitalDefensor"), t.getInt("controlCapitalAtacant"),
-                        t.getInt("baixesAtacant"), t.getInt("baixesDefensor"), subs);
+                        t.getInt("baixesAtacant"), t.getInt("baixesDefensor"), subs, t.getInt("zona"));
                 r.carregarGuerra(g);
                 if (t.contains("pau", Tag.TAG_COMPOUND)) {
                     CompoundTag p = t.getCompound("pau");
