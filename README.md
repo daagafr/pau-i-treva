@@ -16,7 +16,9 @@ El nom ve de la Pau i Treva de Déu (Toluges, 1027): dies en què no es podia ll
   bel·ligerants, captura per presència,
   punts, baixes, vides, pau proposada, imposada o automàtica, rendició, traspàs de chunks i humiliació.
 - **Pantalla del joc** (tecla N), dibuixada pel servidor: País, Membres, Diplomàcia, Guerres i Diari. Tot el que fan les
-  ordres es pot fer des d'aquí.
+  ordres es pot fer des d'aquí. Estil propi de fusta fosca i or (inspirat en els jocs de Paradox): escut i nom del país a
+  dalt, xips amb icones, seccions amb marc, barra de puntuació de guerra i barres de control. Les icones surten de
+  `eines/icones.py` (`python3 eines/icones.py` torna a fer `textures/gui/icones.png`).
 - **Avisos a pantalla amb so** (títols, barra d'acció i barra de guerra), amb paquets de Minecraft normals.
 - **Territori del país**: ordre d'admin per passar els claims dels membres al líder (claims de party d'OPAC), i quan canvia
   el líder, el territori passa al nou.
@@ -151,7 +153,8 @@ En local cal un JDK 21 (`./gradlew build`; al portàtil n'hi ha un a `~/.local/s
 - `opac/`: tot el que es llegeix o es canvia d'OPAC (`PontOpac`), la zona en disputa (`ZonaOpac`, i qui hi té accés:
   `AccesGuerra`) i el veto als claims en disputa (`VetClaims`). `mixin/ProteccioOpacMixin` i `guerra/PvpGuerra`: el PvP de guerra.
 - `guerra/`: les operacions de guerra senceres (`Guerres`) i la batalla en directe (`Batalles`).
-- `pantalla/`: la pantalla que fa el servidor (`Vistes`) i els paquets (`Xarxa`); `client/`: la tecla i el dibuix.
+- `pantalla/`: la pantalla que fa el servidor (`Vistes`, amb les peces de `Pantalla`) i els paquets (`Xarxa`); `client/`: la
+  tecla, el dibuix (`PantallaPais`), l'estil (`Estil`) i els botons (`BotoPau`).
 - `mon/Dades`: desar i carregar al món. `ordres/`: `/nacio`, `/diplomacia`, `/guerra`, textos i avisos.
 - `Manteniment`: la feina periòdica (caducitats, identitat a OPAC, aliats, líders, API).
 - `src/gametest/`: les proves dins del servidor i del client (no entren al jar).

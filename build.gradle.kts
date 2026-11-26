@@ -66,7 +66,7 @@ neoForge {
             client()
             sourceSet = gametest
             gameDirectory = project.file("build/proves-client")
-            programArguments.addAll("--quickPlaySingleplayer", "prova", "--username", "Dagafr")
+            programArguments.addAll("--quickPlaySingleplayer", "prova", "--username", "Dagafr", "--width", "1280", "--height", "720")
             systemProperty("pauitreva.provaClient", "true")
         }
     }

@@ -58,6 +58,8 @@ public final class ProvaPantalla {
             return;
         }
         ticks++;
+        // El ratolí virtual és al mig i hi faria sortir textos d'ajuda: fora.
+        org.lwjgl.glfw.GLFW.glfwSetCursorPos(mc.getWindow().getWindow(), 2, 2);
         if (ticks == 60) {
             MinecraftServer server = mc.getSingleplayerServer();
             UUID jo = mc.player.getUUID();

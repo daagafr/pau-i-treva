@@ -66,10 +66,33 @@ public final class Manteniment {
             api = true;
             port = 25582;
         }
+        tancarPvpVell(server);
         if (api) {
             ApiWeb.engegar(port);
             ApiWeb.actualitzar(server);
         }
+    }
+
+    /** Els jugadors a qui la 0.2.0 va obrir el PvP (playersByPlayers): se'ls torna a posar el de per defecte. */
+    private static void tancarPvpVell(MinecraftServer server) {
+        Dades dades = Dades.dades(server);
+        if (dades.pvpPerTancar().isEmpty()) {
+            return;
+        }
+        var configs = PontOpac.api(server).getPlayerConfigManager();
+        var perDefecte = configs.getDefaultConfig();
+        boolean valor = perDefecte != null && Boolean.TRUE.equals(perDefecte.getEffective(
+                xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS));
+        for (UUID id : dades.pvpPerTancar()) {
+            var config = configs.getLoadedConfig(id);
+            if (config != null) {
+                config.tryToSet(xaero.pac.common.server.player.config.api.v2.PlayerConfigOptions.CLAIM_EXCEPTION_PLAYERS_BY_PLAYERS, valor);
+            }
+        }
+        PauITreva.LOG.info("Pau i Treva: s'ha tornat a tancar el PvP que la 0.2.0 havia obert a {} jugadors",
+                dades.pvpPerTancar().size());
+        dades.pvpPerTancar().clear();
+        dades.setDirty();
     }
 
     public static void aturar() {

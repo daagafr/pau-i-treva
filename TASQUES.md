@@ -71,6 +71,14 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 ## Interfície
 
 - [ ] Refer la pantalla (tecla N): la d'ara fa servir els botons i el fons de Minecraft de sèrie i és lletja. Mirar com ho fan els jocs de Paradox (Europa Universalis, Crusader Kings, Hearts of Iron, Victoria): panells amb marc, la bandera i el nom del país a dalt, icones en lloc de text, barres per als punts i el control, el mapa al centre, i tooltips amb el detall. Com que és part del client, s'ha de fer abans de posar Pau i Treva al modpack, perquè el modpack només canviï un cop (David, 26/11)
+  - [x] Primera versió (26/11): marc de fusta fosca i or, capçalera amb l'escut i el nom del país i xips (líder, membres, territori, capital, guerres), pestanyes amb icona, seccions amb marc, botons, camps i textos d'ajuda propis, escuts petits a les llistes, barra de puntuació de guerra a l'estil EU4 i barres de control de cada chunk. 16 icones pixel art (`eines/icones.py`). Protocol de la pantalla v2
+  - [ ] Que David ho miri i digui què li agrada i què no (captures a `build/proves-client/screenshots`, amb `./gradlew runProvaClient`)
+  - [ ] Pestanya Mapa: la graella de chunks del voltant amb els colors dels països, per triar l'objectiu fent clic
+  - [ ] Les banderes de veritat (les pintures del datapack `mineuab-banderes`) en lloc de l'escut de color
+  - [ ] Barra de guerra pròpia a dalt de la pantalla de joc (en lloc de la boss bar), amb els dos escuts
+  - [ ] Diari més compacte (data i text en una línia) i amb filtres (guerres, diplomàcia, el meu país)
+  - [ ] Etiquetes alineades als formularis (ara cada camp comença on acaba la seva etiqueta)
+  - [ ] Sons de clic i de canvi de pestanya
 
 ## Idees (aprovades per David el 26/11)
 

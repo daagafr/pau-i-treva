@@ -67,7 +67,8 @@ public final class Xarxa {
     }
 
     public static void registrar(RegisterPayloadHandlersEvent e) {
-        PayloadRegistrar r = e.registrar("1").optional();
+        // Versió 2: pantalla amb capçalera, icones, barres i seccions (la 1 només tenia text, botons i camps).
+        PayloadRegistrar r = e.registrar("2").optional();
         r.playToClient(Mostra.TIPUS, Mostra.CODI, (p, context) -> rebreAlClient.accept(p.pantalla()));
         r.playToServer(Accio.TIPUS, Accio.CODI, (p, context) -> {
             if (context.player() instanceof ServerPlayer jugador) {

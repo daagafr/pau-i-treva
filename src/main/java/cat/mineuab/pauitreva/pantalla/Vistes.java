@@ -18,6 +18,7 @@ import cat.mineuab.pauitreva.model.TipusRelacio;
 import cat.mineuab.pauitreva.model.Validacio;
 import cat.mineuab.pauitreva.mon.Dades;
 import cat.mineuab.pauitreva.opac.PontOpac;
+import cat.mineuab.pauitreva.opac.ZonaOpac;
 import cat.mineuab.pauitreva.ordres.Missatges;
 import cat.mineuab.pauitreva.ordres.OrdresGuerra;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Boto;
@@ -101,14 +102,46 @@ public final class Vistes {
                 }
             }
         }
-        Component titol = pais == null ? Component.literal("Pau i Treva") : Missatges.pais(pais);
         List<Pestanya> pestanyes = List.of(
-                new Pestanya(PAIS, Component.literal("País")),
-                new Pestanya(MEMBRES, Component.literal("Membres")),
-                new Pestanya(DIPLOMACIA, Component.literal("Diplomàcia")),
-                new Pestanya(GUERRES, Component.literal(r.guerres().isEmpty() ? "Guerres" : "Guerres ⚔")),
-                new Pestanya(DIARI, Component.literal("Diari")));
-        return new Pantalla(titol, pestanyes, activa, avisos, f);
+                new Pestanya(PAIS, Component.literal("País"), "escut"),
+                new Pestanya(MEMBRES, Component.literal("Membres"), "membres"),
+                new Pestanya(DIPLOMACIA, Component.literal("Diplomàcia"), "diplomacia"),
+                new Pestanya(GUERRES, Component.literal("Guerres" + (r.guerres().isEmpty() ? "" : " (" + r.guerres().size() + ")")),
+                        "guerra"),
+                new Pestanya(DIARI, Component.literal("Diari"), "diari"));
+        return new Pantalla(capcalera(q), pestanyes, activa, avisos, f);
+    }
+
+    /** A dalt de tot: l'escut i el nom del país, el lema i uns xips amb el més important. */
+    private static Pantalla.Capcalera capcalera(Qui q) {
+        if (q.pais == null) {
+            return new Pantalla.Capcalera(0x8C6F35, "", Component.literal("Pau i Treva"),
+                    Component.literal("No ets de cap país").withStyle(s -> s.withColor(GRIS)),
+                    List.of(icona("escut", q.r.paisos().size() + " països", "Països que hi ha al servidor"),
+                            icona("guerra", q.r.guerres().size() + " guerres", "Guerres obertes ara")));
+        }
+        Pais p = q.pais;
+        long ara = System.currentTimeMillis();
+        List<Peca> xips = new ArrayList<>();
+        xips.add(icona("corona", q.partit == null ? "?" : PontOpac.nomLider(q.partit), p.nomRang(Rang.LIDER)));
+        xips.add(icona("membres", String.valueOf(membres(q.server, p)), "Membres"));
+        int chunks = q.partit == null ? 0 : ZonaOpac.territori(q.server, q.partit).size();
+        xips.add(icona("territori", String.valueOf(chunks), "Chunks de territori"));
+        xips.add(icona("capital", p.capital() == null ? "—" : p.capital().chunkX() + ", " + p.capital().chunkZ(),
+                p.capital() == null ? "Sense capital: a la guerra, la del mig del territori" : "Capital (chunk)"));
+        int guerres = q.r.guerresDe(p.id()).size();
+        if (guerres > 0) {
+            xips.add(new Pantalla.Icona("guerra", Component.literal(String.valueOf(guerres)).withStyle(s -> s.withColor(to(ChatFormatting.RED))),
+                    Component.literal("Guerres obertes")));
+        }
+        if (p.humiliat(ara)) {
+            xips.add(new Pantalla.Icona("baixes", Component.literal("Humiliat").withStyle(s -> s.withColor(to(ChatFormatting.RED))),
+                    Component.literal("Fins al " + Missatges.data(p.humiliatFins()))));
+        }
+        Component subtitol = p.lema().isEmpty()
+                ? Component.literal("Fundat el " + Missatges.dia(p.fundat())).withStyle(s -> s.withColor(GRIS))
+                : Component.literal("«" + p.lema() + "»").withStyle(s -> s.withColor(GRIS).withItalic(true));
+        return new Pantalla.Capcalera(p.color(), p.sigla(), Component.literal(p.nom()), subtitol, xips);
     }
 
     // ---------------------------------------------------------------- Peces
@@ -121,12 +154,32 @@ public final class Vistes {
         return new Text(Component.literal(s));
     }
 
+    /** Un gris càlid, que lliga amb el fons de la pantalla. */
+    static final int GRIS = 0xA8997C;
+
     private static Text gris(String s) {
-        return new Text(Component.literal(s).withStyle(ChatFormatting.GRAY));
+        return new Text(Component.literal(s).withStyle(st -> st.withColor(GRIS)));
     }
 
     private static Fila titol(String s) {
-        return Fila.de(new Text(Component.literal(s).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        return titol(s, "");
+    }
+
+    private static Fila titol(String s, String icona) {
+        return Fila.de(new Pantalla.Seccio(Component.literal(s), icona));
+    }
+
+    private static Pantalla.Icona icona(String icona, String text, String ajuda) {
+        return new Pantalla.Icona(icona, Component.literal(text), Component.literal(ajuda));
+    }
+
+    private static Pantalla.Escut escut(Pais p) {
+        return new Pantalla.Escut(p.color(), p.sigla(), Component.literal(Registre.etiqueta(p)));
+    }
+
+    /** El país amb el seu escut, per a les llistes. */
+    private static List<Peca> ambEscut(Pais p) {
+        return new ArrayList<>(List.of(escut(p), text(Missatges.pais(p))));
     }
 
     private static Boto boto(String text, String accio) {
@@ -134,7 +187,19 @@ public final class Vistes {
     }
 
     private static Boto boto(String text, String accio, ChatFormatting color, String ajuda) {
-        return new Boto(Component.literal(text).withStyle(color), accio, Component.literal(ajuda));
+        return new Boto(Component.literal(text).withStyle(s -> s.withColor(to(color))), accio, Component.literal(ajuda));
+    }
+
+    /** Els colors de Minecraft, passats a tons que lliguen amb la fusta i l'or de la pantalla. */
+    private static int to(ChatFormatting c) {
+        return switch (c) {
+            case GREEN -> 0x8FC86A;
+            case AQUA -> 0x7FBCCB;
+            case RED -> 0xE5705A;
+            case YELLOW, GOLD -> 0xE8C977;
+            case GRAY -> GRIS;
+            default -> c.getColor() == null ? 0xE8DCC0 : c.getColor();
+        };
     }
 
     private static Boto desactivat(String text, String perque) {
@@ -145,15 +210,12 @@ public final class Vistes {
         return new Entrada(id, valor, ample, max, Component.empty());
     }
 
-    private static Fila buida() {
-        return Fila.de(text(""));
-    }
 
     // ---------------------------------------------------------------- País
 
     private static void pais(Qui q, List<Fila> f) {
         if (q.pais == null) {
-            f.add(titol("No ets de cap país"));
+            f.add(titol("No ets de cap país", "escut"));
             if (q.partit != null && q.rang != Rang.LIDER) {
                 f.add(Fila.de(gris("Ets d'una party d'OPAC i no n'ets el propietari: només el propietari en pot fer un país.")));
             } else {
@@ -163,42 +225,33 @@ public final class Vistes {
                         boto("Funda el país", "/nacio funda {sigla} {nom}", ChatFormatting.GREEN, "")));
             }
             f.add(Fila.de(gris("O entra a la party d'OPAC d'un país que ja existeixi (que et convidin amb /openpac-parties).")));
-            f.add(buida());
-            f.add(titol("Països (" + q.r.paisos().size() + ")"));
+            f.add(titol("Països (" + q.r.paisos().size() + ")", "escut"));
             for (Pais p : q.r.paisos()) {
-                f.add(Fila.de(text(Missatges.pais(p)), gris(" · " + membres(q.server, p) + " membres")));
+                List<Peca> fila = ambEscut(p);
+                fila.add(gris(" · " + membres(q.server, p) + " membres"));
+                f.add(new Fila(fila));
             }
             return;
         }
         Pais p = q.pais;
-        long ara = System.currentTimeMillis();
-        if (!p.lema().isEmpty()) {
-            f.add(Fila.de(text(Component.literal("«" + p.lema() + "»").withStyle(ChatFormatting.ITALIC))));
-        }
-        String lider = q.partit == null ? "?" : PontOpac.nomLider(q.partit);
-        f.add(Fila.de(gris(p.nomRang(Rang.LIDER) + ": "), text(lider),
-                gris(" · " + membres(q.server, p) + " membres · fundat el " + Missatges.dia(p.fundat()))));
-        f.add(Fila.de(gris("El teu rang: "), text(q.rang == null ? "?" : p.nomRang(q.rang))));
-        String capital = p.capital() == null ? "sense capital (a la guerra, la del mig del territori)"
-                : "chunk " + p.capital().chunkX() + ", " + p.capital().chunkZ() + " (" + p.capital().dimensio() + ")";
-        f.add(Fila.de(gris("Capital: " + capital)));
-        f.add(Fila.de(gris("Bandera: " + (p.bandera().isEmpty() ? "cap" : p.bandera()))));
-        if (p.humiliat(ara)) {
-            f.add(Fila.de(text(Component.literal("Humiliat per una guerra perduda fins al " + Missatges.data(p.humiliatFins()))
-                    .withStyle(ChatFormatting.RED))));
-        }
+        f.add(titol("El país", "escut"));
+        f.add(Fila.de(icona("corona", "El teu rang: " + (q.rang == null ? "?" : p.nomRang(q.rang)), "Ho decideix OPAC"),
+                icona("diari", "Fundat el " + Missatges.dia(p.fundat()), "")));
+        String capital = p.capital() == null ? "Sense capital (a la guerra, la del mig del territori)"
+                : "Capital al chunk " + p.capital().chunkX() + ", " + p.capital().chunkZ();
+        f.add(Fila.de(icona("capital", capital, p.capital() == null ? "" : p.capital().dimensio()),
+                icona("pau", p.bandera().isEmpty() ? "Sense bandera" : "Bandera: " + p.bandera(), "")));
         List<Guerra> guerres = q.r.guerresDe(p.id());
         if (!guerres.isEmpty()) {
-            f.add(Fila.de(text(Component.literal("En guerra amb " + guerres.size()
-                    + (guerres.size() == 1 ? " país " : " països ")).withStyle(ChatFormatting.RED)),
+            f.add(Fila.de(new Pantalla.Icona("guerra", Component.literal("En guerra amb " + guerres.size()
+                    + (guerres.size() == 1 ? " país" : " països")).withStyle(s -> s.withColor(to(ChatFormatting.RED))), Component.empty()),
                     boto("Mira-ho", "pestanya:" + GUERRES)));
         }
-        f.add(buida());
         if (!q.pot(Permis.EDITAR)) {
             f.add(Fila.de(gris("Per canviar les dades del país cal ser " + p.nomRang(p.rangPer(Permis.EDITAR)) + " o més.")));
             return;
         }
-        f.add(titol("Canviar les dades"));
+        f.add(titol("Canviar les dades", "pacte"));
         f.add(Fila.de(text("Nom"), entrada("nom", p.nom(), 160, Validacio.NOM_MAX), boto("Desa", "/nacio nom {nom}")));
         f.add(Fila.de(text("Sigla"), entrada("sigla", p.sigla(), 44, 4), boto("Desa", "/nacio sigla {sigla}")));
         List<Peca> colors = new ArrayList<>();
@@ -215,7 +268,6 @@ public final class Vistes {
         f.add(Fila.de(boto("Posa la capital on soc", "/nacio capital", ChatFormatting.YELLOW,
                 "El chunk on ets ara, que ha de ser del país.")));
         if (q.rang == Rang.LIDER) {
-            f.add(buida());
             f.add(Fila.de(boto("Dissol el país…", "pestanya:dissol", ChatFormatting.RED,
                     "La party d'OPAC i els claims es queden.")));
         }
@@ -226,7 +278,7 @@ public final class Vistes {
             pais(q, f);
             return;
         }
-        f.add(titol("Dissoldre " + Registre.etiqueta(q.pais) + "?"));
+        f.add(titol("Dissoldre " + Registre.etiqueta(q.pais) + "?", "baixes"));
         f.add(Fila.de(gris("El país desapareix, amb les aliances i els pactes. Les guerres s'acaben en blanc. "
                 + "La party d'OPAC i els claims es queden com estan.")));
         f.add(Fila.de(boto("Sí, dissol-lo", "/nacio dissol confirmo", ChatFormatting.RED, ""),
@@ -246,18 +298,20 @@ public final class Vistes {
             return;
         }
         Pais p = q.pais;
-        f.add(titol("Membres (" + q.partit.getMemberCount() + ")"));
+        f.add(titol("Membres (" + q.partit.getMemberCount() + ")", "membres"));
         for (IPartyMemberAPI m : PontOpac.membres(q.partit)) {
             Rang rang = PontOpac.rang(q.partit, m.getUUID());
             boolean connectat = q.server.getPlayerList().getPlayer(m.getUUID()) != null;
-            f.add(Fila.de(text(Component.literal(connectat ? "● " : "○ ")
-                            .withStyle(connectat ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY)),
-                    text(m.getUsername()), gris(" · " + (rang == null ? "" : p.nomRang(rang)))));
+            String icona = rang == Rang.LIDER ? "corona" : rang != null && rang.almenys(Rang.OFICIAL) ? "escut" : "membres";
+            f.add(Fila.de(new Pantalla.Icona(icona, Component.literal(m.getUsername()),
+                            Component.literal(connectat ? "Connectat" : "No connectat")),
+                    gris(" " + (rang == null ? "" : p.nomRang(rang)) + "  "),
+                    text(Component.literal(connectat ? "● connectat" : "○").withStyle(st -> st.withColor(connectat
+                            ? to(ChatFormatting.GREEN) : 0x6E6252)))));
         }
         f.add(Fila.de(gris("Per convidar, expulsar o canviar el rang de algú: /openpac-parties (ho fa OPAC).")));
-        f.add(buida());
         if (q.pot(Permis.EDITAR)) {
-            f.add(titol("Noms dels rangs"));
+            f.add(titol("Noms dels rangs", "corona"));
             for (Rang rang : Rang.values()) {
                 String id = "rang_" + rang.clau();
                 f.add(Fila.de(gris(rang.nomPerDefecte()), entrada(id, p.nomRang(rang), 140, Validacio.NOM_RANG_MAX),
@@ -265,8 +319,7 @@ public final class Vistes {
                         boto("Per defecte", "/nacio rang " + rang.clau())));
             }
         }
-        f.add(buida());
-        f.add(titol("Qui pot fer què"));
+        f.add(titol("Qui pot fer què", "pacte"));
         for (Permis permis : Permis.values()) {
             if (!permis.configurable()) {
                 continue;
@@ -304,7 +357,7 @@ public final class Vistes {
     private static void diplomacia(Qui q, List<Fila> f) {
         Pais p = q.pais;
         if (p != null) {
-            f.add(titol("Relacions"));
+            f.add(titol("Relacions", "diplomacia"));
             Map<UUID, EstatRelacio> rel = q.r.relacionsDe(p.id());
             if (rel.isEmpty()) {
                 f.add(Fila.de(gris("Cap aliança, pacte, treva ni guerra.")));
@@ -316,7 +369,9 @@ public final class Vistes {
                 }
                 EstatRelacio estat = e.getValue();
                 List<Peca> fila = new ArrayList<>();
-                fila.add(text(majuscula(estat.tipus().nom()) + " amb "));
+                fila.add(new Pantalla.Icona(iconaRelacio(estat.tipus()), Component.literal(majuscula(estat.tipus().nom())
+                        + " amb "), Component.empty()));
+                fila.add(escut(altre));
                 fila.add(text(Missatges.pais(altre)));
                 if (estat.fins() > 0) {
                     fila.add(gris(" fins al " + Missatges.data(estat.fins())));
@@ -334,8 +389,8 @@ public final class Vistes {
             }
             for (Proposta pr : q.r.propostesRebudes(p.id())) {
                 q.r.pais(pr.de()).ifPresent(de -> {
-                    List<Peca> fila = new ArrayList<>(List.of(text(Missatges.pais(de)),
-                            text(Component.literal(" us proposa " + descriu(pr)).withStyle(ChatFormatting.YELLOW))));
+                    List<Peca> fila = new ArrayList<>(List.of(escut(de), text(Missatges.pais(de)),
+                            text(Component.literal(" us proposa " + descriu(pr)).withStyle(s -> s.withColor(to(ChatFormatting.YELLOW))))));
                     if (q.pot(Permis.DIPLOMACIA)) {
                         fila.add(boto("Accepta", "/diplomacia accepta " + de.sigla(), ChatFormatting.GREEN, ""));
                         fila.add(boto("Rebutja", "/diplomacia rebutja " + de.sigla(), ChatFormatting.RED, ""));
@@ -347,15 +402,13 @@ public final class Vistes {
                 q.r.pais(pr.a()).ifPresent(a -> f.add(Fila.de(gris("Esperant que "), text(Missatges.pais(a)),
                         gris(" respongui: " + descriu(pr)))));
             }
-            f.add(buida());
         }
-        f.add(titol("Països"));
+        f.add(titol("Països", "escut"));
         for (Pais altre : q.r.paisos()) {
             if (p != null && altre.id().equals(p.id())) {
                 continue;
             }
-            List<Peca> fila = new ArrayList<>();
-            fila.add(text(Missatges.pais(altre)));
+            List<Peca> fila = ambEscut(altre);
             int n = membres(q.server, altre);
             fila.add(gris(" · " + n + (n == 1 ? " membre" : " membres")));
             if (p != null) {
@@ -380,6 +433,16 @@ public final class Vistes {
         }
     }
 
+    private static String iconaRelacio(TipusRelacio t) {
+        return switch (t) {
+            case ALIANCA -> "alianca";
+            case PACTE -> "pacte";
+            case TREVA -> "treva";
+            case GUERRA -> "guerra";
+            case NEUTRAL -> "pau";
+        };
+    }
+
     private static String descriu(Proposta pr) {
         return pr.tipus() == TipusRelacio.ALIANCA ? "una aliança"
                 : "un pacte de no agressió de " + pr.dies() + (pr.dies() == 1 ? " dia" : " dies");
@@ -390,21 +453,19 @@ public final class Vistes {
     private static void guerres(Qui q, List<Fila> f) {
         long ara = System.currentTimeMillis();
         FinestresGuerra fin = Config.finestres();
-        f.add(Fila.de(gris("Es lluita de dilluns a divendres de " + fin.iniciFeiner() + " a " + fin.fiFeiner()
-                + " i el cap de setmana de " + fin.iniciCapDeSetmana() + " a " + fin.fiCapDeSetmana() + ". "),
-                Batalles.finestraOberta()
-                        ? text(Component.literal("Ara és oberta.").withStyle(ChatFormatting.RED))
-                        : gris("Propera: " + Missatges.data(fin.properaObertura(ara)) + ".")));
+        f.add(Fila.de(new Pantalla.Icona("treva", Batalles.finestraOberta()
+                        ? Component.literal("Ara es lluita").withStyle(s -> s.withColor(to(ChatFormatting.RED)))
+                        : Component.literal("Propera batalla: " + Missatges.data(fin.properaObertura(ara))),
+                Component.literal("De dilluns a divendres de " + fin.iniciFeiner() + " a " + fin.fiFeiner()
+                        + "; el cap de setmana de " + fin.iniciCapDeSetmana() + " a " + fin.fiCapDeSetmana()))));
         Pais p = q.pais;
         if (p != null) {
             for (Guerra g : q.r.guerresDe(p.id())) {
-                f.add(buida());
                 guerra(q, f, g, ara);
             }
             OrdresGuerra.esborrany(p.id()).ifPresent(e -> {
-                f.add(buida());
                 Pais contra = q.r.pais(e.contra()).orElse(null);
-                f.add(titol("Objectiu que prepareu"));
+                f.add(titol("Objectiu que prepareu", "objectiu"));
                 f.add(Fila.de(gris(e.chunks().size() + (e.chunks().size() == 1 ? " chunk de " : " chunks de ")),
                         text(contra == null ? Component.literal("?") : Missatges.pais(contra)),
                         boto("Mostra'l", "/guerra objectiu mostra"), boto("Buida", "/guerra objectiu buida")));
@@ -413,8 +474,7 @@ public final class Vistes {
                 }
             });
             if (q.pot(Permis.GUERRA)) {
-                f.add(buida());
-                f.add(titol("Preparar una conquesta"));
+                f.add(titol("Preparar una conquesta", "objectiu"));
                 f.add(Fila.de(gris("Posa't als chunks del país que vols i afegeix-los a l'objectiu (es veuen amb flames):")));
                 f.add(Fila.de(boto("Aquest chunk", "/guerra objectiu afegeix"), boto("Radi 1", "/guerra objectiu radi 1"),
                         boto("Radi 2", "/guerra objectiu radi 2"), boto("Treu aquest", "/guerra objectiu treu")));
@@ -422,13 +482,11 @@ public final class Vistes {
         }
         List<Guerra> altres = q.r.guerres().stream().filter(g -> p == null || !g.hiEs(p.id())).toList();
         if (!altres.isEmpty()) {
-            f.add(buida());
-            f.add(titol("Altres guerres"));
+            f.add(titol("Altres guerres", "guerra"));
             for (Guerra g : altres) {
-                f.add(Fila.de(text(Missatges.pais(q.r.pais(g.atacant()).orElseThrow())),
-                        text(Component.literal(" ⚔ ").withStyle(ChatFormatting.RED)),
-                        text(Missatges.pais(q.r.pais(g.defensor()).orElseThrow())),
-                        gris(" · " + g.objectiu().nom() + " · " + (g.punts() > 0 ? "+" : "") + g.punts())));
+                Pais a = q.r.pais(g.atacant()).orElseThrow();
+                Pais d = q.r.pais(g.defensor()).orElseThrow();
+                f.add(Fila.de(escut(a), barraGuerra(g, a, d, 120), escut(d), gris(" " + g.objectiu().nom())));
             }
         }
         if (p == null && q.r.guerres().isEmpty()) {
@@ -443,25 +501,43 @@ public final class Vistes {
             return;
         }
         boolean ataquem = g.atacant().equals(p.id());
-        f.add(Fila.de(text(Component.literal("⚔ ").withStyle(ChatFormatting.RED)), text(Missatges.pais(enemic)),
-                gris(ataquem ? " · l'ataquem · " : " · ens ataca · "), gris(objectiu(g))));
-        int punts = g.puntsDe(p.id());
+        f.add(titol("Guerra amb " + Registre.etiqueta(enemic) + " · " + (ataquem ? "l'ataquem" : "ens ataca") + " · "
+                + objectiu(g), "guerra"));
+        // La puntuació, com a Europa Universalis: el nostre color a l'esquerra, el de l'enemic a la dreta.
+        f.add(Fila.de(escut(p), barraGuerra(g, p, enemic, 230), escut(enemic)));
         String fase = !g.activa(ara) ? "Preparació fins al " + Missatges.data(g.inici())
                 : Batalles.finestraOberta() ? "Batalla en curs" : "Activa";
-        f.add(Fila.de(gris(fase + " · "),
-                text(Component.literal((punts > 0 ? "+" : "") + punts + " punts").withStyle(punts > 0 ? ChatFormatting.GREEN
-                        : punts < 0 ? ChatFormatting.RED : ChatFormatting.YELLOW)),
-                gris(" · baixes " + (ataquem ? g.baixesAtacant() + "/" + g.baixesDefensor() : g.baixesDefensor() + "/"
-                        + g.baixesAtacant()) + (g.limit() > 0 ? " · s'acaba sola el " + Missatges.data(g.limit()) : ""))));
-        if (!g.chunks().isEmpty()) {
-            f.add(Fila.de(gris("Objectiu: " + g.controlats().size() + " de " + g.chunks().size() + " chunks presos"
-                    + capitals(g))));
-        } else if (g.capitalDefensor() != null || g.capitalAtacant() != null) {
-            f.add(Fila.de(gris(capitals(g).replaceFirst("^ · ", ""))));
-        }
         ParametresGuerra par = Config.parametres();
-        f.add(Fila.de(gris("Et queden " + Math.max(0, par.vides() - g.mortsDe(q.jugador.getUUID())) + " de " + par.vides()
-                + " vides en aquesta batalla."), boto("Detall al xat", "/guerra estat " + enemic.sigla())));
+        int nostres = ataquem ? g.baixesAtacant() : g.baixesDefensor();
+        int seves = ataquem ? g.baixesDefensor() : g.baixesAtacant();
+        f.add(Fila.de(icona("treva", fase, g.limit() > 0 ? "Si ningú no signa la pau, s'acaba sola el "
+                        + Missatges.data(g.limit()) : ""),
+                icona("baixes", nostres + " / " + seves, "Baixes que hem fet / que ens han fet"),
+                icona("vides", Math.max(0, par.vides() - g.mortsDe(q.jugador.getUUID())) + "/" + par.vides(),
+                        "Les teves vides en aquesta batalla"),
+                boto("Detall al xat", "/guerra estat " + enemic.sigla())));
+        // El control de cada punt de captura.
+        List<Peca> punts = new ArrayList<>();
+        for (cat.mineuab.pauitreva.model.Chunk c : g.perControl()) {
+            if (punts.size() >= 8) {
+                break;
+            }
+            punts.add(barraControl(c.x() + ", " + c.z(), 64, g.control(c), ataquem ? p : enemic, ataquem ? enemic : p,
+                    "Chunk de l'objectiu " + c.x() + ", " + c.z()));
+        }
+        if (g.capitalDefensor() != null && !g.chunks().contains(g.capitalDefensor())) {
+            Pais def = ataquem ? enemic : p;
+            punts.add(barraControl("Capital " + def.sigla(), 96, g.controlCapitalDefensor(), ataquem ? p : enemic, def,
+                    "La capital del defensor: si l'atacant la pren, guanya punts cada minut"));
+        }
+        if (g.capitalAtacant() != null) {
+            Pais at = ataquem ? p : enemic;
+            punts.add(barraControl("Capital " + at.sigla(), 96, g.controlCapitalAtacant(), ataquem ? enemic : p, at,
+                    "La capital de l'atacant: si el defensor la pren, guanya punts cada minut"));
+        }
+        if (!punts.isEmpty()) {
+            f.add(new Fila(punts));
+        }
         Registre.PropostaPau pr = q.r.propostaPau(g.id()).orElse(null);
         if (pr != null) {
             String termes = termes(q.r, g, pr.guanyador(), pr.termes());
@@ -470,7 +546,7 @@ public final class Vistes {
                         q.pot(Permis.PAU) ? boto("Retira-la", "/guerra pau " + enemic.sigla() + " rebutja") : gris("")));
             } else {
                 List<Peca> fila = new ArrayList<>(List.of(text(Component.literal("Proposen la pau: " + termes + " ")
-                        .withStyle(ChatFormatting.YELLOW))));
+                        .withStyle(s -> s.withColor(to(ChatFormatting.YELLOW))))));
                 if (q.pot(Permis.PAU)) {
                     fila.add(boto("Accepta", "/guerra pau " + enemic.sigla() + " accepta " + pr.creada(), ChatFormatting.GREEN, ""));
                     fila.add(boto("Rebutja", "/guerra pau " + enemic.sigla() + " rebutja", ChatFormatting.RED, ""));
@@ -506,6 +582,22 @@ public final class Vistes {
         f.add(Fila.de(boto("Rendeix-te…", "pestanya:rendir:" + enemic.sigla(), ChatFormatting.RED, "")));
     }
 
+    /** La barra de la puntuació d'una guerra, del punt de vista de {@code esquerra}. */
+    private static Pantalla.Barra barraGuerra(Guerra g, Pais esquerra, Pais dreta, int ample) {
+        int punts = g.puntsDe(esquerra.id());
+        float valor = (punts + Guerra.PUNTS_MAX) / (2f * Guerra.PUNTS_MAX);
+        return new Pantalla.Barra(valor, esquerra.color(), dreta.color(),
+                Component.literal((punts > 0 ? "+" : "") + punts), ample,
+                Component.literal("Punts de guerra de " + Registre.etiqueta(esquerra) + ": " + punts
+                        + ". Amb prou punts es pot imposar la pau."));
+    }
+
+    /** Una barra petita amb el control d'un punt de captura: el color de qui el pren omple des de l'esquerra. */
+    private static Pantalla.Barra barraControl(String text, int ample, int control, Pais pren, Pais te, String ajuda) {
+        return new Pantalla.Barra(control / (float) Guerra.CONTROL_MAX, pren.color(), te.color(),
+                Component.literal(text), ample, Component.literal(ajuda + ": " + control * 100 / Guerra.CONTROL_MAX + "% pres"));
+    }
+
     /** Un botó per proposar uns termes a favor nostre; si tenim prou punts, els imposa. */
     private static Boto botoTermes(Guerra g, Pais p, Pais enemic, String text, String paraules, Termes t) {
         int cost = t.cost(g);
@@ -522,16 +614,6 @@ public final class Vistes {
                 : g.objectiu().nom();
     }
 
-    private static String capitals(Guerra g) {
-        StringBuilder sb = new StringBuilder();
-        if (g.capitalDefensor() != null && !g.chunks().contains(g.capitalDefensor())) {
-            sb.append(" · capital del defensor ").append(g.controlCapitalDefensor() * 100 / Guerra.CONTROL_MAX).append("% presa");
-        }
-        if (g.capitalAtacant() != null) {
-            sb.append(" · capital de l'atacant ").append(g.controlCapitalAtacant() * 100 / Guerra.CONTROL_MAX).append("% presa");
-        }
-        return sb.toString();
-    }
 
     private static String termes(Registre r, Guerra g, UUID guanyador, Termes t) {
         if (t.esBlanca()) {
@@ -556,7 +638,7 @@ public final class Vistes {
             return;
         }
         ParametresGuerra par = Config.parametres();
-        f.add(titol("Declarar la guerra a " + Registre.etiqueta(contra)));
+        f.add(titol("Declarar la guerra a " + Registre.etiqueta(contra), "guerra"));
         f.add(Fila.de(gris("Després hi ha " + par.preparacio() / Registre.HORA + " h de preparació; només es lluita dins de "
                 + "les finestres. Si ningú no signa la pau, al cap de " + par.durada() / Registre.DIA
                 + " dies guanya qui tingui més punts.")));
@@ -581,7 +663,7 @@ public final class Vistes {
             return;
         }
         Termes t = Registre.termesRendicio(g, q.pais.id());
-        f.add(titol("Rendir-se davant de " + Registre.etiqueta(enemic) + "?"));
+        f.add(titol("Rendir-se davant de " + Registre.etiqueta(enemic) + "?", "pau"));
         f.add(Fila.de(gris("Perdeu la guerra: " + termes(q.r, g, enemic.id(), t) + ".")));
         f.add(Fila.de(boto("Sí, ens rendim", "/guerra rendeix " + sigla + " confirmo", ChatFormatting.RED, ""),
                 boto("No", "pestanya:" + GUERRES)));
@@ -591,13 +673,29 @@ public final class Vistes {
 
     private static void diari(Qui q, List<Fila> f) {
         List<Esdeveniment> darrers = q.r.darrers(25);
-        f.add(titol("Diari diplomàtic"));
+        f.add(titol("Diari diplomàtic", "diari"));
         if (darrers.isEmpty()) {
             f.add(Fila.de(gris("Encara és buit.")));
         }
         for (Esdeveniment e : darrers) {
-            f.add(Fila.de(gris(Missatges.data(e.quan()) + "  "), text(e.text())));
+            f.add(Fila.de(new Pantalla.Icona(iconaDiari(e.tipus()), Component.literal(Missatges.data(e.quan()))
+                    .withStyle(st -> st.withColor(GRIS)), Component.empty())));
+            f.add(Fila.de(text("    " + e.text())));
         }
+    }
+
+    private static String iconaDiari(String tipus) {
+        return switch (tipus) {
+            case Esdeveniment.GUERRA, Esdeveniment.GUERRA_COMENCA -> "guerra";
+            case Esdeveniment.PAU, Esdeveniment.LIMIT -> "pau";
+            case Esdeveniment.ALIANCA, Esdeveniment.ALIANCA_TRENCADA -> "alianca";
+            case Esdeveniment.PACTE, Esdeveniment.PACTE_TRENCAT, Esdeveniment.PACTE_ACABAT -> "pacte";
+            case Esdeveniment.TREVA_ACABADA -> "treva";
+            case Esdeveniment.CAPTURA -> "capital";
+            case Esdeveniment.LIDER -> "corona";
+            case Esdeveniment.DISSOLUCIO -> "baixes";
+            default -> "escut";
+        };
     }
 
     private static String majuscula(String s) {

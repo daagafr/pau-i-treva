@@ -41,6 +41,12 @@ public final class Dades extends SavedData {
 
     private final Registre registre;
     private long versioDesada;
+    /**
+     * La 0.2.0 obria el PvP de guerra posant playersByPlayers a la config dels jugadors i en desava la llista
+     * («pvpObert»). Si un món la porta, en arrencar es tanca a aquests jugadors ({@link #pvpPerTancar}) i la llista ja
+     * no es torna a desar.
+     */
+    private final java.util.Set<java.util.UUID> pvpPerTancar = new java.util.HashSet<>();
 
     private Dades(Registre registre) {
         this.registre = registre;
@@ -58,6 +64,10 @@ public final class Dades extends SavedData {
 
     public static Dades dades(MinecraftServer server) {
         return de(server);
+    }
+
+    public java.util.Set<java.util.UUID> pvpPerTancar() {
+        return pvpPerTancar;
     }
 
     @Override
@@ -317,6 +327,13 @@ public final class Dades extends SavedData {
         }
 
         Dades dades = new Dades(r);
+        for (Tag e : tag.getList("pvpObert", Tag.TAG_INT_ARRAY)) {
+            try {
+                dades.pvpPerTancar.add(net.minecraft.nbt.NbtUtils.loadUUID(e));
+            } catch (RuntimeException ex) {
+                PauITreva.LOG.error("Pau i Treva: no s'ha pogut llegir un id de pvpObert: {}", e, ex);
+            }
+        }
 
         PauITreva.LOG.info("Pau i Treva: {} països, {} relacions, {} propostes, {} guerres i {} entrades del diari",
                 r.paisos().size(), r.totesLesRelacions().size(), r.totesLesPropostes().size(), r.guerres().size(),

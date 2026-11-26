@@ -1,11 +1,15 @@
 package cat.mineuab.pauitreva.client;
 
 import cat.mineuab.pauitreva.pantalla.Pantalla;
+import cat.mineuab.pauitreva.pantalla.Pantalla.Barra;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Boto;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Entrada;
+import cat.mineuab.pauitreva.pantalla.Pantalla.Escut;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Fila;
+import cat.mineuab.pauitreva.pantalla.Pantalla.Icona;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Peca;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Pestanya;
+import cat.mineuab.pauitreva.pantalla.Pantalla.Seccio;
 import cat.mineuab.pauitreva.pantalla.Pantalla.Text;
 import cat.mineuab.pauitreva.pantalla.Xarxa;
 import java.util.ArrayList;
@@ -15,24 +19,27 @@ import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
- * La pantalla del país (tecla N). No sap res de països: pinta el que li envia el servidor ({@link Pantalla}) i,
- * quan es fa clic a un botó, li torna l'acció amb el que hi hagi escrit als camps.
+ * La pantalla del país (tecla N). No sap res de països: dibuixa el que li envia el servidor ({@link Pantalla}) amb
+ * l'estil de {@link Estil} i, quan es fa clic a un botó, li torna l'acció amb el que hi hagi escrit als camps.
+ *
+ * <p>Disposició: un marc gran; a dalt, l'escut i el nom del país amb els xips; sota, les pestanyes; i el contingut,
+ * que es pot desplaçar, fet de seccions amb marc.
  */
 public final class PantallaPais extends Screen {
 
-    private static final int AMPLE_MAX = 460;
+    private static final int AMPLE_MAX = 560;
     private static final int LINIA = 10;
-    private static final int ALT_FILA = 20;
+    private static final int ALT_FILA = 18;
+    private static final int ALT_CAPCALERA = 50;
 
     /** Si s'ha demanat obrir la pantalla (amb la tecla) i encara no ha arribat. */
     static boolean esperant;
@@ -41,15 +48,32 @@ public final class PantallaPais extends Screen {
     private int scroll;
     private int alturaContingut;
     private int x0;
+    private int y0;
     private int ample;
+    private int alt;
+    private int cx;
+    private int cw;
     private int dalt;
     private int baix;
+    private final List<Dibuix> caixes = new ArrayList<>();
+    private final List<Dibuix> fons = new ArrayList<>();
+    private final List<Dibuix> dibuixos = new ArrayList<>();
     private final List<Linia> textos = new ArrayList<>();
+    private final List<Ajuda> ajudes = new ArrayList<>();
     private final Map<String, EditBox> entrades = new HashMap<>();
     /** El que l'usuari ha escrit, perquè no es perdi en fer scroll. Es buida quan arriben dades noves. */
     private final Map<String, String> escrit = new HashMap<>();
 
-    private record Linia(FormattedCharSequence text, int x, int y) {
+    /** Una cosa que es dibuixa al contingut (ja desplaçada). */
+    private interface Dibuix {
+        void dibuixar(GuiGraphics g);
+    }
+
+    private record Linia(FormattedCharSequence text, int x, int y, int color) {
+    }
+
+    /** Una zona on, en passar-hi el ratolí, surt un text d'ajuda. {@code contingut}: retallada a la zona del contingut. */
+    private record Ajuda(int x, int y, int w, int h, Component text, boolean contingut) {
     }
 
     private PantallaPais(Pantalla dades) {
@@ -74,103 +98,243 @@ public final class PantallaPais extends Screen {
         }
     }
 
+    // ---------------------------------------------------------------- Disposició
+
     @Override
     protected void init() {
+        caixes.clear();
+        fons.clear();
+        dibuixos.clear();
         textos.clear();
+        ajudes.clear();
         entrades.clear();
-        ample = Math.min(width - 20, AMPLE_MAX);
+        ample = Math.min(width - 12, AMPLE_MAX);
+        alt = height - 10;
         x0 = (width - ample) / 2;
+        y0 = 5;
 
-        int tx = x0;
-        int ty = 20;
+        ajudesCapcalera();
+
+        // Pestanyes, enganxades a la part de dalt del contingut.
+        int tx = x0 + 10;
+        int ty = y0 + ALT_CAPCALERA + 4;
         for (Pestanya t : dades.pestanyes()) {
-            int w = font.width(t.nom()) + 14;
-            if (tx + w > x0 + ample) {
-                tx = x0;
-                ty += 20;
+            int w = BotoPau.amplada(font, t.nom(), !t.icona().isEmpty());
+            if (tx + w > x0 + ample - 10) {
+                break;
             }
-            Button b = Button.builder(t.nom(), x -> enviar("pestanya:" + t.id())).bounds(tx, ty, w, 18).build();
+            BotoPau b = new BotoPau(tx, ty, w, 20, t.nom(), t.icona(), true, x -> enviar("pestanya:" + t.id()));
             b.active = !t.id().equals(dades.activa());
             addRenderableWidget(b);
             tx += w + 2;
         }
-        dalt = ty + 24;
-        baix = height - 10;
+
+        int px = x0 + 8;
+        int py = ty + 20;
+        cx = px + 8;
+        cw = ample - 16 - 16 - 6;
+        dalt = py + 6;
+        baix = y0 + alt - 14;
 
         int y = dalt - scroll;
-        for (Component avis : dades.avisos()) {
-            for (FormattedCharSequence l : font.split(avis, ample - 8)) {
-                textos.add(new Linia(l, x0 + 4, y + 3));
-                y += LINIA;
-            }
-        }
         if (!dades.avisos().isEmpty()) {
-            y += 10;
-        }
-        int iniciFiles = y;
-        for (Fila f : dades.files()) {
-            if (f.peces().stream().allMatch(p -> p instanceof Text)) {
-                // Una fila només de text: s'ajunta en un sol text i s'ajusta a l'amplada.
-                net.minecraft.network.chat.MutableComponent tot = Component.empty();
-                f.peces().forEach(p -> tot.append(((Text) p).text()));
-                List<FormattedCharSequence> linies = font.split(tot, ample);
-                for (FormattedCharSequence l : linies) {
-                    textos.add(new Linia(l, x0, y));
+            int inici = y;
+            y += 5;
+            for (Component avis : dades.avisos()) {
+                for (FormattedCharSequence l : font.split(avis, cw - 12)) {
+                    textos.add(new Linia(l, cx + 8, y, Estil.TEXT));
                     y += LINIA;
                 }
-                y += linies.isEmpty() ? LINIA : 2;
+            }
+            y += 4;
+            int iy = inici;
+            int fy = y;
+            fons.add(g -> {
+                g.fill(cx, iy, cx + cw, fy, 0xFF3A2A16);
+                g.fill(cx, iy, cx + 3, fy, Estil.OR);
+                g.fill(cx, fy - 1, cx + cw, fy, Estil.OR_FOSC);
+            });
+            y += 6;
+        }
+
+        int iniciSeccio = Integer.MIN_VALUE;
+        for (Fila f : dades.files()) {
+            if (f.peces().size() == 1 && f.peces().get(0) instanceof Seccio s) {
+                tancarSeccio(iniciSeccio, y);
+                if (iniciSeccio != Integer.MIN_VALUE) {
+                    y += 8;
+                }
+                iniciSeccio = y;
+                int sy = y + 4;
+                dibuixos.add(g -> Estil.titolSeccio(g, font, cx + 2, sy, cw - 4, s.titol(), s.icona()));
+                y += 22;
                 continue;
             }
-            int px = x0;
+            int marge = iniciSeccio == Integer.MIN_VALUE ? 0 : 8;
+            int ex = cx + marge;
+            int ew = cw - 2 * marge;
+            if (f.peces().stream().allMatch(p -> p instanceof Text)) {
+                MutableComponent tot = Component.empty();
+                f.peces().forEach(p -> tot.append(((Text) p).text()));
+                List<FormattedCharSequence> linies = font.split(tot, ew);
+                for (FormattedCharSequence l : linies) {
+                    textos.add(new Linia(l, ex, y, Estil.TEXT));
+                    y += LINIA;
+                }
+                y += linies.isEmpty() ? LINIA : 3;
+                continue;
+            }
+            int fx = ex;
             for (Peca peca : f.peces()) {
                 int w = amplada(peca);
-                if (px > x0 && px + w > x0 + ample) {
-                    px = x0;
-                    y += ALT_FILA;
+                if (fx > ex && fx + w > ex + ew) {
+                    fx = ex;
+                    y += ALT_FILA + 2;
                 }
-                switch (peca) {
-                    case Text t -> textos.add(new Linia(t.text().getVisualOrderText(), px, y + 5));
-                    case Boto b -> {
-                        Button boto = Button.builder(b.text(), x -> clicar(b.accio())).bounds(px, y, w, 18)
-                                .tooltip(b.ajuda().getString().isEmpty() ? null : Tooltip.create(b.ajuda())).build();
-                        boto.active = !b.accio().isEmpty();
-                        afegir(boto, y);
-                    }
-                    case Entrada e -> {
-                        EditBox camp = new EditBox(font, px + 1, y + 1, w - 2, 16, Component.literal(e.id()));
-                        camp.setMaxLength(Math.max(1, e.max()));
-                        camp.setValue(escrit.getOrDefault(e.id(), e.valor()));
-                        camp.setResponder(v -> escrit.put(e.id(), v));
-                        if (!e.ajuda().getString().isEmpty()) {
-                            camp.setTooltip(Tooltip.create(e.ajuda()));
-                        }
-                        entrades.put(e.id(), camp);
-                        afegir(camp, y);
-                    }
-                }
-                px += w + 3;
+                posar(peca, fx, y, w);
+                fx += w + 4;
             }
-            y += ALT_FILA + 2;
+            y += ALT_FILA + 4;
         }
-        alturaContingut = y + scroll - dalt;
-        if (dades.avisos().isEmpty() && iniciFiles == dalt - scroll) {
-            alturaContingut = Math.max(alturaContingut, 0);
-        }
+        tancarSeccio(iniciSeccio, y);
+        alturaContingut = y + 6 + scroll - dalt;
     }
 
-    /** Afegeix un botó o un camp, i l'amaga si queda fora de la zona visible. */
-    private void afegir(AbstractWidget w, int y) {
-        w.visible = y >= dalt && y + 18 <= baix;
-        addRenderableWidget(w);
+    private void tancarSeccio(int inici, int fi) {
+        if (inici == Integer.MIN_VALUE) {
+            return;
+        }
+        int x = cx;
+        int w = cw;
+        caixes.add(g -> Estil.caixa(g, x, inici, w, fi - inici + 2));
+    }
+
+    /** Les ajudes de la capçalera (l'escut i els xips), que no es desplacen. */
+    private void ajudesCapcalera() {
+        Pantalla.Capcalera c = dades.capcalera();
+        int ex = x0 + 14;
+        int ey = y0 + 9;
+        int xx = ex + 40;
+        int xy = y0 + 34;
+        for (Peca p : c.xips()) {
+            if (p instanceof Icona i) {
+                int w = 16 + 3 + font.width(i.text());
+                if (xx + w > x0 + ample - 12) {
+                    break;
+                }
+                if (!i.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(xx, xy, w, 16, i.ajuda(), false));
+                }
+                xx += w + 10;
+            }
+        }
+        ajudes.add(new Ajuda(ex, ey, 30, 36, c.sigla().isEmpty() ? Component.literal("Pau i Treva")
+                : Component.literal("[" + c.sigla() + "] ").append(c.nom()), false));
+    }
+
+    private void dibuixarCapcalera(GuiGraphics g) {
+        Pantalla.Capcalera c = dades.capcalera();
+        int ex = x0 + 14;
+        int ey = y0 + 9;
+        Estil.escut(g, font, ex, ey, 30, 36, c.color(), c.sigla());
+        int nx = ex + 40;
+        g.pose().pushPose();
+        g.pose().translate(nx, y0 + 10, 0);
+        g.pose().scale(1.6f, 1.6f, 1f);
+        g.drawString(font, c.nom(), 0, 0, Estil.OR_CLAR, true);
+        g.pose().popPose();
+        int sx = nx + Math.round(font.width(c.nom()) * 1.6f) + 10;
+        if (sx + font.width(c.subtitol()) < x0 + ample - 14) {
+            g.drawString(font, c.subtitol(), sx, y0 + 14, Estil.TEXT_GRIS, true);
+        }
+        int xx = nx;
+        int xy = y0 + 34;
+        for (Peca p : c.xips()) {
+            if (p instanceof Icona i) {
+                int w = 16 + 3 + font.width(i.text());
+                if (xx + w > x0 + ample - 12) {
+                    break;
+                }
+                Estil.icona(g, i.icona(), xx, xy);
+                g.drawString(font, i.text(), xx + 19, xy + 4, Estil.TEXT, true);
+                xx += w + 10;
+            }
+        }
+        // Línia d'or sota la capçalera.
+        g.fill(x0 + 8, y0 + ALT_CAPCALERA + 2, x0 + ample - 8, y0 + ALT_CAPCALERA + 3, Estil.OR_FOSC);
     }
 
     private int amplada(Peca peca) {
         return switch (peca) {
             case Text t -> font.width(t.text());
-            case Boto b -> Math.max(20, font.width(b.text()) + 10);
+            case Boto b -> Math.max(20, BotoPau.amplada(font, b.text(), false));
             case Entrada e -> Math.max(24, e.ample());
+            case Icona i -> 16 + 3 + font.width(i.text());
+            case Barra b -> Math.max(30, b.ample());
+            case Escut e -> 12;
+            case Seccio s -> font.width(s.titol());
         };
     }
+
+    /** Posa una peça d'una fila a {@code (x, y)}: un giny, o una cosa per dibuixar. */
+    private void posar(Peca peca, int x, int y, int w) {
+        switch (peca) {
+            case Text t -> textos.add(new Linia(t.text().getVisualOrderText(), x, y + 5, Estil.TEXT));
+            case Boto b -> {
+                BotoPau boto = new BotoPau(x, y, w, ALT_FILA, b.text(), z -> clicar(b.accio()));
+                boto.active = !b.accio().isEmpty();
+                if (!b.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, w, ALT_FILA, b.ajuda(), true));
+                }
+                afegir(boto, y);
+            }
+            case Entrada e -> {
+                fons.add(g -> Estil.inserit(g, x, y, w, ALT_FILA));
+                EditBox camp = new EditBox(font, x + 5, y + 5, w - 8, 10, Component.literal(e.id()));
+                camp.setBordered(false);
+                camp.setTextColor(Estil.TEXT);
+                camp.setMaxLength(Math.max(1, e.max()));
+                camp.setValue(escrit.getOrDefault(e.id(), e.valor()));
+                camp.setResponder(v -> escrit.put(e.id(), v));
+                if (!e.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, w, ALT_FILA, e.ajuda(), true));
+                }
+                entrades.put(e.id(), camp);
+                afegir(camp, y);
+            }
+            case Icona i -> {
+                dibuixos.add(g -> {
+                    Estil.icona(g, i.icona(), x, y + 1);
+                    g.drawString(font, i.text(), x + 19, y + 5, Estil.TEXT, true);
+                });
+                if (!i.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, w, ALT_FILA, i.ajuda(), true));
+                }
+            }
+            case Barra b -> {
+                dibuixos.add(g -> Estil.barra(g, font, x, y + 2, w, ALT_FILA - 4, b.valor(), b.colorEsquerra(),
+                        b.colorDreta(), b.text()));
+                if (!b.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, w, ALT_FILA, b.ajuda(), true));
+                }
+            }
+            case Escut e -> {
+                dibuixos.add(g -> Estil.escut(g, font, x, y + 2, 12, 14, e.color(), e.sigla()));
+                if (!e.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, 12, ALT_FILA, e.ajuda(), true));
+                }
+            }
+            case Seccio s -> textos.add(new Linia(s.titol().getVisualOrderText(), x, y + 5, Estil.OR_CLAR));
+        }
+    }
+
+    /** Afegeix un botó o un camp, i l'amaga si queda fora de la zona visible. */
+    private void afegir(AbstractWidget w, int y) {
+        w.visible = y >= dalt && y + ALT_FILA <= baix;
+        addRenderableWidget(w);
+    }
+
+    // ---------------------------------------------------------------- Accions
 
     private void clicar(String accio) {
         if (accio.isEmpty()) {
@@ -187,29 +351,54 @@ public final class PantallaPais extends Screen {
         PacketDistributor.sendToServer(new Xarxa.Accio(accio));
     }
 
+    // ---------------------------------------------------------------- Dibuix
+
     @Override
-    public void render(GuiGraphics g, int mx, int my, float pt) {
-        super.render(g, mx, my, pt);
-        g.drawCenteredString(font, dades.titol(), width / 2, 6, 0xFFFFFF);
-        g.enableScissor(x0 - 2, dalt, x0 + ample + 2, baix);
-        if (!dades.avisos().isEmpty()) {
-            int alt = 0;
-            for (Component avis : dades.avisos()) {
-                alt += font.split(avis, ample - 8).size() * LINIA;
-            }
-            g.fill(x0, dalt - scroll, x0 + ample, dalt - scroll + alt + 6, 0x80000000);
+    public void renderBackground(GuiGraphics g, int mx, int my, float pt) {
+        super.renderBackground(g, mx, my, pt);
+        Estil.marc(g, x0, y0, ample, alt);
+        dibuixarCapcalera(g);
+        int px = x0 + 8;
+        int py = y0 + ALT_CAPCALERA + 24;
+        Estil.inserit(g, px, py, ample - 16, y0 + alt - 8 - py);
+        g.enableScissor(px + 1, dalt - 4, px + ample - 17, baix + 2);
+        for (Dibuix d : caixes) {
+            d.dibuixar(g);
+        }
+        for (Dibuix d : fons) {
+            d.dibuixar(g);
+        }
+        for (Dibuix d : dibuixos) {
+            d.dibuixar(g);
         }
         for (Linia l : textos) {
-            if (l.y() + LINIA >= dalt && l.y() <= baix) {
-                g.drawString(font, l.text(), l.x(), l.y(), 0xFFFFFF, true);
+            if (l.y() + LINIA >= dalt - 4 && l.y() <= baix) {
+                g.drawString(font, l.text(), l.x(), l.y(), l.color(), true);
             }
         }
         g.disableScissor();
         int visible = baix - dalt;
         if (alturaContingut > visible) {
-            int barra = Math.max(12, visible * visible / alturaContingut);
+            int bx = x0 + ample - 20;
+            g.fill(bx, dalt, bx + 4, baix, Estil.NEGRE);
+            int barra = Math.max(14, visible * visible / alturaContingut);
             int pos = dalt + (visible - barra) * scroll / Math.max(1, alturaContingut - visible);
-            g.fill(x0 + ample + 4, pos, x0 + ample + 6, pos + barra, 0xFFAAAAAA);
+            g.fill(bx, pos, bx + 4, pos + barra, Estil.OR_FOSC);
+            g.fill(bx + 1, pos + 1, bx + 3, pos + barra - 1, Estil.OR);
+        }
+    }
+
+    @Override
+    public void render(GuiGraphics g, int mx, int my, float pt) {
+        super.render(g, mx, my, pt);
+        for (Ajuda a : ajudes) {
+            if (a.contingut() && (my < dalt || my > baix)) {
+                continue;
+            }
+            if (mx >= a.x() && mx < a.x() + a.w() && my >= a.y() && my < a.y() + a.h()) {
+                Estil.ajuda(g, font, a.text(), mx, my, width, height);
+                return;
+            }
         }
         Style estil = estilA(mx, my);
         if (estil != null && estil.getHoverEvent() != null) {
