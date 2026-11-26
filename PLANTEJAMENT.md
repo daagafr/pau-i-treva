@@ -183,3 +183,5 @@ La pantalla del joc va des de la primera versió (decidit el 25/11). Cada fase h
 4. **Primera versió només amb ordres, o directament amb pantalla pròpia?** **Decidit el 25/11:** amb pantalla des de la primera versió (vegeu «Fases»).
 5. **On viu el codi i com es compila?** **Decidit el 25/11:** repositori privat `daagafr/pau-i-treva` amb GitHub Actions, com els plugins (vegeu «Com es construeix»). El repositori es crea quan es comenci a programar.
 6. **Nom del mod.** **Decidit el 25/11:** **Pau i Treva** (id `pauitreva`). Vegeu «D'on surt el nom». La web i l'API continuen dient-se «nacions» (`/create/nacions`, `nacions.mineuab.org`), perquè als jugadors els diu de què va la pàgina.
+7. **Declarar la guerra costa alguna cosa?** **Decidit el 26/11:** no, és gratis.
+8. **La pantalla del joc.** **Decidit el 26/11:** s'ha de refer amb un estil propi, mirant els jocs de Paradox, abans que Pau i Treva entri al modpack.

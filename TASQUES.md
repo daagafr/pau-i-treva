@@ -68,11 +68,16 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 - [x] Dues guerres alhora compartien la sub-config de guerra d'un mateix amo; i un chunk podia ser en dues guerres
 - [x] Una sub-config feta a mà amb el nom `pit-guerra-...` deixava els chunks fora de la zona; ara només se salten els que ja són a la de la seva guerra, i es repassa cada 3 s
 
-## Idees
+## Interfície
+
+- [ ] Refer la pantalla (tecla N): la d'ara fa servir els botons i el fons de Minecraft de sèrie i és lletja. Mirar com ho fan els jocs de Paradox (Europa Universalis, Crusader Kings, Hearts of Iron, Victoria): panells amb marc, la bandera i el nom del país a dalt, icones en lloc de text, barres per als punts i el control, el mapa al centre, i tooltips amb el detall. Com que és part del client, s'ha de fer abans de posar Pau i Treva al modpack, perquè el modpack només canviï un cop (David, 26/11)
+
+## Idees (aprovades per David el 26/11)
 
 - [ ] Aliats a la guerra: quan declaren la guerra a un aliat, demanar-li si hi entra (bàndols de més d'un país)
 - [ ] Títol de «Traïdor/a» en trencar un pacte, i prestigi per guanyar guerres (fase 3)
+- Descartat (26/11): que declarar la guerra costi diners o ítems
 - [ ] Mapa a la pantalla: pestanya amb la graella de chunks del voltant, per triar l'objectiu fent clic en lloc de caminar
 - [ ] Avisar el defensor quan entren enemics a la zona en disputa durant la finestra (com Claim Intrusion Alert, però de guerra)
-- [ ] Recompte de la batalla al diari en tancar cada finestra (baixes, chunks presos), i a la web
+- [ ] Recompte de la batalla al diari en tancar cada finestra (baixes, chunks presos), a la web i a Discord (amb un webhook, com Warfare)
 - [ ] Les explosions de Create Big Cannons i les contraptions: provar-les a la zona en disputa al servidor de proves (ara només s'ha provat la TNT)
