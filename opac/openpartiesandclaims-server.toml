@@ -1,0 +1,17 @@
+# Les opcions d'OPAC que Pau i Treva necessita al servidor del Create, a
+# world/serverconfig/openpartiesandclaims-server.toml. Només hi ha les que cal canviar: la resta es
+# queden com estiguin. Les de [serverConfig.claims] i primaryPartySystem només s'apliquen reiniciant.
+# El servidor de proves (./gradlew runProves) arrenca amb aquest mateix fitxer.
+
+[serverConfig]
+	# Les parties d'OPAC són els països (no hi ha cap altre sistema de parties instal·lat).
+	primaryPartySystem = "default"
+	# Els OPs (i els mods) poden canviar aquestes opcions per jugador; els jugadors, no. Les vuit primeres són
+	# les de per defecte d'OPAC; la darrera és la que fa servir Pau i Treva per obrir el PvP de la guerra.
+	opConfigurablePlayerConfigOptions = ["claims.bonusChunkClaims", "claims.bonusChunkForceloads", "claims.bonusAnchors", "claims.bonusAnchorRange", "bonusPlayerGroups", "bonusPlayerGroupSpace", "claims.allowedToClaim", "claims.allowedToAddForceloads", "claims.protection.exceptions.playersByPlayers"]
+
+	[serverConfig.claims]
+		# Els claims són del país (tècnicament, del líder de la party). Abans d'activar-ho, /nacio admin migra.
+		partyOwnedClaims = true
+		# Perquè ningú no perdi capacitat en passar els claims al país: cada membre hi suma el que tenia sol.
+		forceloadBonusPerPartyMember = 30

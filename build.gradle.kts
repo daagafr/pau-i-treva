@@ -107,5 +107,8 @@ tasks.matching { it.name == "runProves" }.configureEach {
         if (opac.exists()) {
             opac.copyTo(dir.resolve("world/serverconfig/openpartiesandclaims-default-player-config.toml"))
         }
+        // I la config del servidor d'OPAC que Pau i Treva necessita (claims de party, PvP de guerra).
+        project.file("opac/openpartiesandclaims-server.toml")
+            .copyTo(dir.resolve("world/serverconfig/openpartiesandclaims-server.toml"))
     }
 }

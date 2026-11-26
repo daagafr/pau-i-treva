@@ -100,8 +100,8 @@ public final class ZonaOpac {
             }
             IPlayerConfigAPI actual = config.getEffectiveSubConfig(claim.getSubConfigIndex());
             String abans = actual.getSubId() == null ? MAIN : actual.getSubId();
-            if (abans.startsWith(PREFIX)) {
-                continue; // ja hi és (una càrrega repetida)
+            if (abans.equals(sub(g))) {
+                continue; // ja hi és (una càrrega repetida, o un canvi de líder)
             }
             IPlayerConfigAPI sub = subDeGuerra(config, sub(g), defensor);
             if (sub == null) {

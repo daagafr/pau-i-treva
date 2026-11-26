@@ -158,7 +158,9 @@ public final class Batalles {
             }
         }
 
-        if (caldReconciliar || ticks % (20 * 15) == 0) {
+        // Cada pocs segons, per desfer el que algú canviï a mà (per exemple, tornar a protegir la sub-config de
+        // guerra des del menú d'OPAC durant la batalla).
+        if (caldReconciliar || ticks % (20 * 3) == 0) {
             reconciliar(server, oberta);
         }
         barres(server, oberta, ara);

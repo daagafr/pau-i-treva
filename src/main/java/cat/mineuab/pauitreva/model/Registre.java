@@ -995,6 +995,20 @@ public final class Registre {
         permisos.forEach(p::posarPermis);
     }
 
+    /** Apunta qui és el líder del país ara (el manteniment ho mira a OPAC). */
+    public void posarLider(UUID pais, UUID lider) {
+        Pais p = paisos.get(pais);
+        if (p != null && !java.util.Objects.equals(p.lider(), lider)) {
+            p.posarLider(lider);
+            canvi();
+        }
+    }
+
+    /** Per carregar les dades del món. */
+    public static void carregarLider(Pais p, UUID lider) {
+        p.posarLider(lider);
+    }
+
     /** Per carregar les dades del món. */
     public static void carregarHumiliacio(Pais p, long fins) {
         p.posarHumiliatFins(fins);

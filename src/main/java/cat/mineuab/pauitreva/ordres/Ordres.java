@@ -107,7 +107,13 @@ public final class Ordres {
                                 .then(Commands.argument("rang", StringArgumentType.word()).suggests(RANGS)
                                         .executes(Ordres::permis))))
                 .then(Commands.literal("dissol")
-                        .then(Commands.literal("confirmo").executes(Ordres::dissol))));
+                        .then(Commands.literal("confirmo").executes(Ordres::dissol)))
+                .then(Commands.literal("admin")
+                        .requires(s -> s.hasPermission(3))
+                        .then(Commands.literal("migra")
+                                .then(Commands.literal("prova").executes(c -> migrar(c, true)))
+                                .then(Commands.literal("fes")
+                                        .then(Commands.literal("confirmo").executes(c -> migrar(c, false)))))));
 
         d.register(Commands.literal("diplomacia")
                 .executes(Ordres::relacions)
@@ -435,6 +441,76 @@ public final class Ordres {
         }
         c.getSource().sendSuccess(() -> Missatges.gris("La party d'OPAC i els claims es queden com estaven."), false);
         return resposta(c, r);
+    }
+
+    /**
+     * Passa els claims (i els chunks forçats) de cada membre de cada país al líder, perquè siguin del país
+     * (amb {@code partyOwnedClaims} d'OPAC). Amb {@code prova}, només compta i diu si caben als límits d'ara.
+     */
+    private static int migrar(CommandContext<CommandSourceStack> c, boolean prova) throws CommandSyntaxException {
+        MinecraftServer server = c.getSource().getServer();
+        Registre r = Dades.registre(server);
+        if (!r.guerres().isEmpty()) {
+            throw ERROR.create("Hi ha guerres obertes. Acaba-les abans (/guerra admin acaba), perquè la zona en disputa "
+                    + "no es barregi amb la migració.");
+        }
+        CommandSourceStack s = c.getSource();
+        s.sendSuccess(() -> titol(prova ? "Migració dels claims (prova: no es toca res)" : "Migració dels claims"), false);
+        if (!PontOpac.claimsDePartit()) {
+            s.sendSuccess(() -> Component.literal("Atenció: OPAC encara no té partyOwnedClaims = true. Sense això, els "
+                    + "claims passats al líder són del líder, no del país.").withStyle(ChatFormatting.RED), false);
+        }
+        int totalChunks = 0;
+        int totalForcats = 0;
+        var claims = PontOpac.api(server).getServerClaimsManager();
+        for (Pais p : r.paisos()) {
+            IServerPartyAPI partit = PontOpac.partit(server, p.id());
+            if (partit == null) {
+                continue;
+            }
+            UUID lider = partit.getOwner().getUUID();
+            int chunks = 0;
+            int forcats = 0;
+            for (IPartyMemberAPI m : PontOpac.membres(partit)) {
+                int[] n = PontOpac.traspassarClaims(server, m.getUUID(), lider, prova);
+                chunks += n[0];
+                forcats += n[1];
+            }
+            int liderChunks = claims.hasPlayerInfo(lider) ? claims.getPlayerInfo(lider).getClaimCount() : 0;
+            int liderForcats = claims.hasPlayerInfo(lider) ? claims.getPlayerInfo(lider).getForceloadCount() : 0;
+            int totalPais = prova ? liderChunks + chunks : liderChunks;
+            int forcatsPais = prova ? liderForcats + forcats : liderForcats;
+            int limit = claims.getPlayerFullClaimLimit(lider);
+            int limitForcats = claims.getPlayerFullForceloadLimit(lider);
+            int fc = chunks;
+            int ff = forcats;
+            s.sendSuccess(() -> Missatges.pais(p).append(gris(": " + fc + " chunks (" + ff + " forçats) dels membres "
+                    + (prova ? "passarien" : "han passat") + " al líder. En total, " + totalPais + " de " + limit
+                    + " chunks i " + forcatsPais + " de " + limitForcats + " forçats que deixa OPAC ara.")), false);
+            if (totalPais > limit || forcatsPais > limitForcats) {
+                s.sendSuccess(() -> Component.literal("   Passa del límit: puja claimBonusPerPartyMember i "
+                        + "forceloadBonusPerPartyMember a la config d'OPAC.").withStyle(ChatFormatting.RED), false);
+            }
+            totalChunks += chunks;
+            totalForcats += forcats;
+        }
+        int tc = totalChunks;
+        int tf = totalForcats;
+        s.sendSuccess(() -> bo("Total: " + tc + " chunks, " + tf + " forçats." + (prova
+                ? " Per fer-ho de veritat, fes una còpia del món i després /nacio admin migra fes confirmo." : "")), true);
+        return totalChunks;
+    }
+
+    private static MutableComponent titol(String text) {
+        return Missatges.titol(text);
+    }
+
+    private static MutableComponent gris(String text) {
+        return Missatges.gris(text);
+    }
+
+    private static MutableComponent bo(String text) {
+        return Missatges.bo(text);
     }
 
     // ---------------------------------------------------------------- /diplomacia

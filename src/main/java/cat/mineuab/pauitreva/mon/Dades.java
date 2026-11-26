@@ -96,6 +96,9 @@ public final class Dades extends SavedData {
             if (p.humiliatFins() > 0) {
                 t.putLong("humiliatFins", p.humiliatFins());
             }
+            if (p.lider() != null) {
+                t.putUUID("lider", p.lider());
+            }
             if (p.capital() != null) {
                 CompoundTag c = new CompoundTag();
                 c.putString("dimensio", p.capital().dimensio());
@@ -266,6 +269,9 @@ public final class Dades extends SavedData {
                 }
                 Registre.carregarDetalls(p, t.getString("lema"), t.getString("bandera"), capital, rangs, permisos);
                 Registre.carregarHumiliacio(p, t.getLong("humiliatFins"));
+                if (t.hasUUID("lider")) {
+                    Registre.carregarLider(p, t.getUUID("lider"));
+                }
                 r.carregarPais(p);
             } catch (RuntimeException ex) {
                 PauITreva.LOG.error("Pau i Treva: no s'ha pogut llegir un país: {}", e, ex);

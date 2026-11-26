@@ -175,6 +175,65 @@ public final class PontOpac {
         return territori;
     }
 
+    /** Si OPAC té els claims de party activats ({@code partyOwnedClaims}, només canvia reiniciant). */
+    public static boolean claimsDePartit() {
+        try {
+            return xaero.pac.common.server.config.ServerConfig.CONFIG.partyOwnedClaims.get();
+        } catch (RuntimeException | LinkageError e) {
+            return false;
+        }
+    }
+
+    /**
+     * Passa tots els claims de {@code de} a {@code a}, amb els chunks forçats, a la config principal de
+     * {@code a}. Fa servir el camí d'admin d'OPAC: no mira límits.
+     *
+     * @param prova si és {@code true}, només compta
+     * @return {chunks, chunks forçats}
+     */
+    public static int[] traspassarClaims(MinecraftServer server, UUID de, UUID a, boolean prova) {
+        IServerClaimsManagerAPI claims = api(server).getServerClaimsManager();
+        if (de.equals(a) || !claims.hasPlayerInfo(de)) {
+            return new int[] {0, 0};
+        }
+        record Claim(ResourceLocation dim, int x, int z, boolean forcat) {
+        }
+        List<Claim> llista = new ArrayList<>();
+        claims.getPlayerInfo(de).getStream().forEach(dim -> dim.getValue().getStream().forEach(posicions -> {
+            boolean forcat = posicions.getClaimState().isForceloadable();
+            posicions.getStream().forEach(c -> llista.add(new Claim(dim.getKey(), c.x, c.z, forcat)));
+        }));
+        int forcats = 0;
+        for (Claim c : llista) {
+            if (c.forcat()) {
+                forcats++;
+            }
+            if (!prova) {
+                claims.claim(c.dim(), a, -1, c.x(), c.z(), c.forcat());
+            }
+        }
+        return new int[] {llista.size(), forcats};
+    }
+
+    /** Treu el nom i el color del país dels claims i de la party d'un jugador que ja no n'és el líder. */
+    public static void treureIdentitat(MinecraftServer server, UUID jugador, Pais pais) {
+        IPlayerConfigAPI config = api(server).getPlayerConfigManager().getLoadedConfig(jugador);
+        if (config == null) {
+            return;
+        }
+        String nom = Validacio.nomPerOpac(pais.nom());
+        if (nom.equals(config.getRaw(PlayerConfigOptions.CLAIMS_NAME))) {
+            config.tryToSet(PlayerConfigOptions.CLAIMS_NAME, "");
+        }
+        if (nom.equals(config.getRaw(PlayerConfigOptions.PARTY_NAME))) {
+            config.tryToSet(PlayerConfigOptions.PARTY_NAME, "");
+        }
+        Integer color = config.getRaw(PlayerConfigOptions.CLAIMS_COLOR);
+        if (color != null && (color == pais.color() || color == 0x010101 && pais.color() == 0)) {
+            config.tryToSet(PlayerConfigOptions.CLAIMS_COLOR, 0);
+        }
+    }
+
     /** Si el chunk és reclamat per algun membre del país (o pel país, amb claims de party). */
     public static boolean chunkDelPais(MinecraftServer server, IServerPartyAPI partit, ResourceLocation dimensio,
                                        int chunkX, int chunkZ) {

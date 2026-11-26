@@ -23,6 +23,8 @@ public final class Pais {
     private String bandera = "";
     private Capital capital;
     private long humiliatFins;
+    /** El líder (propietari de la party) que hi havia a l'última passada del manteniment, o {@code null}. */
+    private UUID lider;
     private final EnumMap<Rang, String> nomsRangs = new EnumMap<>(Rang.class);
     private final EnumMap<Permis, Rang> permisos = new EnumMap<>(Permis.class);
 
@@ -70,6 +72,10 @@ public final class Pais {
     /** Fins quan queda humiliat per una guerra perduda (0 si mai no ho ha estat). */
     public long humiliatFins() {
         return humiliatFins;
+    }
+
+    public UUID lider() {
+        return lider;
     }
 
     public boolean humiliat(long ara) {
@@ -121,6 +127,10 @@ public final class Pais {
 
     void posarBandera(String bandera) {
         this.bandera = bandera;
+    }
+
+    void posarLider(UUID lider) {
+        this.lider = lider;
     }
 
     void posarHumiliatFins(long fins) {

@@ -22,8 +22,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -123,10 +121,9 @@ public final class ProvesGuerra {
         Registre r = Dades.registre(server);
         long ara = System.currentTimeMillis();
 
-        // Perquè el mod pugui obrir el PvP, com caldrà fer al servidor de veritat.
-        List<String> op = new ArrayList<>(ServerConfig.CONFIG.opConfigurablePlayerConfigOptions.get());
-        op.add("claims.protection.exceptions.playersByPlayers");
-        ServerConfig.CONFIG.opConfigurablePlayerConfigOptions.set(op);
+        // El servidor de proves arrenca amb opac/openpartiesandclaims-server.toml: el mod pot obrir el PvP.
+        cert(h, ServerConfig.CONFIG.opConfigurablePlayerConfigOptions.get()
+                .contains("claims.protection.exceptions.playersByPlayers"), "la config d'OPAC de proves no s'ha carregat");
         // Captura ràpida per no haver d'esperar quatre minuts.
         Config.CAPTURA_BASE.set(5000);
         Config.CAPTURA_MAX.set(5000);

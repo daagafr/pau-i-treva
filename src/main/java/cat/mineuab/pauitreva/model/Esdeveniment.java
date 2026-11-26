@@ -20,4 +20,5 @@ public record Esdeveniment(long quan, String tipus, String text) {
     public static final String GUERRA_COMENCA = "guerra_comenca";
     public static final String LIMIT = "limit";
     public static final String CAPTURA = "captura";
+    public static final String LIDER = "lider";
 }

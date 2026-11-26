@@ -1,5 +1,6 @@
 package cat.mineuab.pauitreva;
 
+import cat.mineuab.pauitreva.guerra.Batalles;
 import cat.mineuab.pauitreva.guerra.Guerres;
 import cat.mineuab.pauitreva.model.Esdeveniment;
 import cat.mineuab.pauitreva.model.Guerra;
@@ -10,6 +11,8 @@ import cat.mineuab.pauitreva.model.Registre;
 import cat.mineuab.pauitreva.model.TipusRelacio;
 import cat.mineuab.pauitreva.mon.Dades;
 import cat.mineuab.pauitreva.opac.PontOpac;
+import cat.mineuab.pauitreva.opac.ZonaOpac;
+import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 import cat.mineuab.pauitreva.ordres.Missatges;
 import cat.mineuab.pauitreva.web.ApiWeb;
 import java.util.HashMap;
@@ -78,6 +81,35 @@ public final class Manteniment {
         }
     }
 
+    /**
+     * Si la party ha canviat de propietari (OPAC no toca els claims quan passa): treu el nom i el color del país
+     * de la config del líder vell i, amb claims de party, li passa tots els chunks al nou, perquè el territori
+     * continuï sent del país. Els chunks en disputa tornen a la zona de guerra del nou amo.
+     */
+    private static void canviDeLider(MinecraftServer server, Registre r, Pais p, long ara) {
+        IServerPartyAPI partit = PontOpac.partit(server, p.id());
+        UUID nou = partit.getOwner().getUUID();
+        UUID vell = p.lider();
+        if (vell != null && !vell.equals(nou)) {
+            PontOpac.treureIdentitat(server, vell, p);
+            if (PontOpac.claimsDePartit()) {
+                int[] n = PontOpac.traspassarClaims(server, vell, nou, false);
+                PauITreva.LOG.info("Pau i Treva: {} canvia de líder; {} chunks ({} forçats) passen al nou",
+                        Registre.etiqueta(p), n[0], n[1]);
+                for (Guerra g : r.guerresDe(p.id())) {
+                    if (g.defensor().equals(p.id())) {
+                        ZonaOpac.prepararZona(server, g, p);
+                    }
+                }
+                Batalles.guerresCanviades(server);
+            }
+            r.apuntar(ara, Esdeveniment.LIDER, Registre.etiqueta(p) + " té un nou líder: "
+                    + partit.getOwner().getUsername() + ".");
+            Missatges.anunciar(server, r.darrers(1).get(0).text());
+        }
+        r.posarLider(p.id(), nou);
+    }
+
     public static void fer(MinecraftServer server) {
         try {
             Registre r = Dades.registre(server);
@@ -104,6 +136,7 @@ public final class Manteniment {
                     continue;
                 }
                 absencies.remove(p.id());
+                canviDeLider(server, r, p, ara);
                 PontOpac.aplicarIdentitat(server, p);
             }
 
