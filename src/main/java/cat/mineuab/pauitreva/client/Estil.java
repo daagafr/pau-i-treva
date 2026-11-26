@@ -35,13 +35,16 @@ public final class Estil {
     private Estil() {
     }
 
-    /** Una icona de 16×16. Si no existeix, l'escut. */
+    /** Costat d'una icona a l'atles, en píxels. Es dibuixa en 16 unitats de GUI: a l'escala 2, píxel a píxel. */
+    private static final int COSTAT = 32;
+
+    /** Una icona en 16×16 unitats de GUI. Si no existeix, l'escut. */
     public static void icona(GuiGraphics g, String nom, int x, int y) {
-        int i = Math.max(0, ICONES.indexOf(nom));
-        if (!ICONES.contains(nom)) {
+        int i = ICONES.indexOf(nom);
+        if (i < 0) {
             i = ICONES.indexOf("escut");
         }
-        g.blit(ATLES, x, y, i * 16, 0, 16, 16, ICONES.size() * 16, 16);
+        g.blit(ATLES, x, y, 16, 16, i * COSTAT, 0, COSTAT, COSTAT, ICONES.size() * COSTAT, COSTAT);
     }
 
     /** El marc gran de la finestra: vores doble d'or, fons de fusta fosca i quatre reblons als racons. */
