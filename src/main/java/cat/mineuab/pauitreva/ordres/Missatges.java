@@ -2,6 +2,7 @@ package cat.mineuab.pauitreva.ordres;
 
 import cat.mineuab.pauitreva.model.Pais;
 import cat.mineuab.pauitreva.model.Resultat;
+import cat.mineuab.pauitreva.model.Territori;
 import cat.mineuab.pauitreva.model.Validacio;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -73,6 +74,18 @@ public final class Missatges {
                 Component.literal("⚖ ").withStyle(ChatFormatting.GOLD)
                         .append(Component.literal(text).withStyle(ChatFormatting.YELLOW)),
                 false);
+    }
+
+    /** Per què no val un objectiu de conquesta. */
+    public static String errorObjectiu(Territori.Error e, int max) {
+        return switch (e) {
+            case BUIT -> "L'objectiu és buit. Afegeix-hi chunks amb /guerra objectiu afegeix o /guerra objectiu radi <r>.";
+            case MASSA_CHUNKS -> "L'objectiu té massa chunks: contra aquest país, com a molt " + max + ".";
+            case NO_ES_DEL_DEFENSOR -> "Algun chunk de l'objectiu ja no és del país que ataques.";
+            case DIMENSIONS_BARREJADES -> "Tots els chunks de l'objectiu han de ser de la mateixa dimensió.";
+            case NO_CONNECTAT -> "Els chunks de l'objectiu han de formar una sola zona (tocant-se pels costats).";
+            case NO_TOCA_FRONTERA -> "L'objectiu ha de tocar el teu territori: almenys un chunk ha de fer frontera amb un dels teus.";
+        };
     }
 
     public static String resultat(Resultat r) {

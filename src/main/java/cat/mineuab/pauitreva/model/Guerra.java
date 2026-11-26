@@ -33,8 +33,8 @@ public final class Guerra {
     private final TipusObjectiu objectiu;
     private final Set<Chunk> chunks;
     private final long declarada;
-    private final long inici;
-    private final long limit;
+    private long inici;
+    private long limit;
     private final Chunk capitalAtacant;
     private final Chunk capitalDefensor;
     private int milpunts;
@@ -240,6 +240,16 @@ public final class Guerra {
             return controlCapitalAtacant;
         }
         return -1;
+    }
+
+    /** Acaba la preparació ara (per provar): l'inici i el límit s'avancen igual. */
+    void avancarInici(long ara) {
+        if (ara < inici) {
+            if (limit > 0) {
+                limit -= inici - ara;
+            }
+            inici = ara;
+        }
     }
 
     void comptarBaixa(UUID paisAssassi) {

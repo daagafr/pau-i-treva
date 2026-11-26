@@ -1,6 +1,8 @@
 package cat.mineuab.pauitreva;
 
+import cat.mineuab.pauitreva.guerra.Guerres;
 import cat.mineuab.pauitreva.model.Esdeveniment;
+import cat.mineuab.pauitreva.model.Guerra;
 import cat.mineuab.pauitreva.model.EstatRelacio;
 import cat.mineuab.pauitreva.model.Pais;
 import cat.mineuab.pauitreva.model.Parella;
@@ -92,6 +94,10 @@ public final class Manteniment {
                             vegades, ABSENCIES_PER_DISSOLDRE);
                     if (vegades >= ABSENCIES_PER_DISSOLDRE) {
                         absencies.remove(p.id());
+                        // Abans, les guerres s'acaben en blanc perquè la zona en disputa torni a OPAC com era.
+                        for (Guerra g : r.guerresDe(p.id())) {
+                            Guerres.acabarEnBlanc(server, g);
+                        }
                         r.dissoldre(p.id(), "la seva party d'OPAC ja no existeix", ara);
                         Missatges.anunciar(server, r.darrers(1).get(0).text());
                     }

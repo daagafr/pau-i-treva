@@ -1,7 +1,9 @@
 package cat.mineuab.pauitreva.ordres;
 
 import cat.mineuab.pauitreva.Config;
+import cat.mineuab.pauitreva.guerra.Guerres;
 import cat.mineuab.pauitreva.model.Capital;
+import cat.mineuab.pauitreva.model.Guerra;
 import cat.mineuab.pauitreva.model.EstatRelacio;
 import cat.mineuab.pauitreva.model.Esdeveniment;
 import cat.mineuab.pauitreva.model.Pais;
@@ -45,7 +47,7 @@ import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
  */
 public final class Ordres {
 
-    private static final DynamicCommandExceptionType ERROR =
+    static final DynamicCommandExceptionType ERROR =
             new DynamicCommandExceptionType(m -> Component.literal(String.valueOf(m)));
 
     /** Colors per als països nous, fins que el líder en triï un. */
@@ -53,7 +55,7 @@ public final class Ordres {
             0xC0392B, 0x2980B9, 0x27AE60, 0x8E44AD, 0xD35400, 0x16A085, 0xF1C40F, 0x2C3E50, 0xE84393, 0x6D4C41,
     };
 
-    private static final SuggestionProvider<CommandSourceStack> SIGLES = (c, b) -> SharedSuggestionProvider.suggest(
+    static final SuggestionProvider<CommandSourceStack> SIGLES = (c, b) -> SharedSuggestionProvider.suggest(
             Dades.registre(c.getSource().getServer()).paisos().stream().map(Pais::sigla), b);
     private static final SuggestionProvider<CommandSourceStack> RANGS = (c, b) -> SharedSuggestionProvider.suggest(
             Arrays.stream(Rang.values()).map(Rang::clau), b);
@@ -131,11 +133,11 @@ public final class Ordres {
     // ---------------------------------------------------------------- Qui executa l'ordre
 
     /** El jugador que executa l'ordre, la seva party, el seu país (si en té) i el seu rang. */
-    private record Jo(ServerPlayer jugador, MinecraftServer server, Registre registre, IServerPartyAPI partit,
+    record Jo(ServerPlayer jugador, MinecraftServer server, Registre registre, IServerPartyAPI partit,
                       Pais pais, Rang rang) {
     }
 
-    private static Jo jo(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+    static Jo jo(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer jugador = c.getSource().getPlayerOrException();
         MinecraftServer server = c.getSource().getServer();
         Registre r = Dades.registre(server);
@@ -146,7 +148,7 @@ public final class Ordres {
     }
 
     /** Com {@link #jo}, però cal tenir país i el permís que es demana. */
-    private static Jo jo(CommandContext<CommandSourceStack> c, Permis permis) throws CommandSyntaxException {
+    static Jo jo(CommandContext<CommandSourceStack> c, Permis permis) throws CommandSyntaxException {
         Jo jo = jo(c);
         if (jo.pais == null) {
             throw ERROR.create("No ets de cap país. Funda'n un amb /nacio funda <sigla> <nom>, "
@@ -159,12 +161,12 @@ public final class Ordres {
         return jo;
     }
 
-    private static Pais altrePais(Registre r, CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+    static Pais altrePais(Registre r, CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         String sigla = StringArgumentType.getString(c, "sigla");
         return r.perSigla(sigla).orElseThrow(() -> ERROR.create("No hi ha cap país amb la sigla " + sigla + "."));
     }
 
-    private static int resposta(CommandContext<CommandSourceStack> c, Resultat r) throws CommandSyntaxException {
+    static int resposta(CommandContext<CommandSourceStack> c, Resultat r) throws CommandSyntaxException {
         if (!r.bo()) {
             throw ERROR.create(Missatges.resultat(r));
         }
@@ -172,7 +174,7 @@ public final class Ordres {
         return 1;
     }
 
-    private static long ara() {
+    static long ara() {
         return System.currentTimeMillis();
     }
 
@@ -424,6 +426,9 @@ public final class Ordres {
                 PontOpac.desaliar(jo.server, jo.pais.id(), e.getKey());
             }
         }
+        for (Guerra g : jo.registre.guerresDe(jo.pais.id())) {
+            Guerres.acabarEnBlanc(jo.server, g);
+        }
         Resultat r = jo.registre.dissoldre(jo.pais.id(), "", ara());
         if (r.bo()) {
             Missatges.anunciar(jo.server, jo.registre.darrers(1).get(0).text());
@@ -563,7 +568,7 @@ public final class Ordres {
                 : "un pacte de no agressió de " + pr.dies() + (pr.dies() == 1 ? " dia" : " dies");
     }
 
-    private static String capitalitza(String s) {
+    static String capitalitza(String s) {
         return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }

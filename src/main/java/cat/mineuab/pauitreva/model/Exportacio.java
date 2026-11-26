@@ -29,6 +29,17 @@ public final class Exportacio {
     public record Membre(String nom, Rang rang) {
     }
 
+    /** Les finestres de guerra tal com surten a l'API: si ara és oberta, quan es tanca i quan s'obre la propera. */
+    public record Finestres(boolean oberta, long tancament, long properaObertura, String feiners, String capDeSetmana,
+                            String zona) {
+
+        public static Finestres de(FinestresGuerra f, boolean oberta, long ara) {
+            return new Finestres(oberta, oberta ? f.tancament(ara) : -1, f.properaObertura(ara),
+                    f.iniciFeiner() + "-" + f.fiFeiner(), f.iniciCapDeSetmana() + "-" + f.fiCapDeSetmana(),
+                    f.zona().getId());
+        }
+    }
+
     private Exportacio() {
     }
 
@@ -36,8 +47,19 @@ public final class Exportacio {
      * @param partits per a cada id de país, la seva party, o {@code null} si OPAC no la té
      */
     public static String estat(Registre r, Function<UUID, InfoPartit> partits, long ara) {
+        FinestresGuerra f = FinestresGuerra.perDefecte();
+        return estat(r, partits, ara, Finestres.de(f, f.oberta(ara), ara));
+    }
+
+    /**
+     * @param partits   per a cada id de país, la seva party, o {@code null} si OPAC no la té
+     * @param finestres les finestres de guerra d'ara
+     */
+    public static String estat(Registre r, Function<UUID, InfoPartit> partits, long ara, Finestres finestres) {
         StringBuilder sb = new StringBuilder(4096);
-        sb.append("{\"versio\":1,\"generat\":").append(ara).append(",\"paisos\":[");
+        sb.append("{\"versio\":2,\"generat\":").append(ara).append(",\"finestres\":");
+        finestres(sb, finestres);
+        sb.append(",\"paisos\":[");
         boolean primer = true;
         for (Pais p : r.paisos()) {
             if (!primer) {
@@ -68,6 +90,20 @@ public final class Exportacio {
             sb.append(",\"des\":").append(estat.des());
             sb.append(",\"fins\":").append(estat.fins() > 0 ? Long.toString(estat.fins()) : "null");
             sb.append('}');
+        }
+        sb.append("],\"guerres\":[");
+        primer = true;
+        for (Guerra g : r.guerres()) {
+            Pais a = r.pais(g.atacant()).orElse(null);
+            Pais d = r.pais(g.defensor()).orElse(null);
+            if (a == null || d == null) {
+                continue;
+            }
+            if (!primer) {
+                sb.append(',');
+            }
+            primer = false;
+            guerra(sb, g, a, d, ara);
         }
         sb.append("],\"diari\":[");
         primer = true;
@@ -104,6 +140,7 @@ public final class Exportacio {
             text(sb, p.bandera());
         }
         sb.append(",\"fundat\":").append(p.fundat());
+        sb.append(",\"humiliatFins\":").append(p.humiliatFins() > 0 ? Long.toString(p.humiliatFins()) : "null");
         sb.append(",\"capital\":");
         if (p.capital() == null) {
             sb.append("null");
@@ -158,6 +195,67 @@ public final class Exportacio {
             }
         }
         sb.append("}}");
+    }
+
+    private static void finestres(StringBuilder sb, Finestres f) {
+        sb.append("{\"oberta\":").append(f.oberta());
+        sb.append(",\"tancament\":").append(f.tancament() > 0 ? Long.toString(f.tancament()) : "null");
+        sb.append(",\"properaObertura\":").append(f.properaObertura());
+        sb.append(",\"feiners\":");
+        text(sb, f.feiners());
+        sb.append(",\"capDeSetmana\":");
+        text(sb, f.capDeSetmana());
+        sb.append(",\"zona\":");
+        text(sb, f.zona());
+        sb.append('}');
+    }
+
+    /** Una guerra. Els punts són del punt de vista de l'atacant; el control, en percentatge. */
+    private static void guerra(StringBuilder sb, Guerra g, Pais a, Pais d, long ara) {
+        sb.append("{\"id\":");
+        text(sb, g.id().toString());
+        sb.append(",\"atacant\":");
+        text(sb, a.sigla());
+        sb.append(",\"defensor\":");
+        text(sb, d.sigla());
+        sb.append(",\"objectiu\":");
+        text(sb, g.objectiu().clau());
+        sb.append(",\"declarada\":").append(g.declarada());
+        sb.append(",\"inici\":").append(g.inici());
+        sb.append(",\"limit\":").append(g.limit() > 0 ? Long.toString(g.limit()) : "null");
+        sb.append(",\"activa\":").append(g.activa(ara));
+        sb.append(",\"punts\":").append(g.punts());
+        sb.append(",\"baixes\":{\"atacant\":").append(g.baixesAtacant())
+                .append(",\"defensor\":").append(g.baixesDefensor()).append('}');
+        sb.append(",\"chunks\":[");
+        boolean primer = true;
+        for (Map.Entry<Chunk, Integer> e : g.controls().entrySet()) {
+            if (!primer) {
+                sb.append(',');
+            }
+            primer = false;
+            chunk(sb, e.getKey(), e.getValue());
+        }
+        sb.append("],\"capitals\":{\"atacant\":");
+        if (g.capitalAtacant() == null) {
+            sb.append("null");
+        } else {
+            chunk(sb, g.capitalAtacant(), g.controlCapitalAtacant());
+        }
+        sb.append(",\"defensor\":");
+        if (g.capitalDefensor() == null) {
+            sb.append("null");
+        } else {
+            chunk(sb, g.capitalDefensor(), g.controlCapitalDefensor());
+        }
+        sb.append("}}");
+    }
+
+    private static void chunk(StringBuilder sb, Chunk c, int control) {
+        sb.append("{\"dimensio\":");
+        text(sb, c.dimensio());
+        sb.append(",\"x\":").append(c.x()).append(",\"z\":").append(c.z());
+        sb.append(",\"control\":").append(control * 100 / Guerra.CONTROL_MAX).append('}');
     }
 
     /** Escriu una cadena JSON, amb les cometes i els caràcters especials escapats. */

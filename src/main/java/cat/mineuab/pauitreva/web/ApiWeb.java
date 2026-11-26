@@ -1,5 +1,7 @@
 package cat.mineuab.pauitreva.web;
 
+import cat.mineuab.pauitreva.Config;
+import cat.mineuab.pauitreva.guerra.Batalles;
 import cat.mineuab.pauitreva.PauITreva;
 import cat.mineuab.pauitreva.model.Exportacio;
 import cat.mineuab.pauitreva.model.Rang;
@@ -67,7 +69,9 @@ public final class ApiWeb {
             return;
         }
         Registre r = Dades.registre(server);
-        String json = Exportacio.estat(r, id -> infoPartit(server, id), System.currentTimeMillis());
+        long ara = System.currentTimeMillis();
+        String json = Exportacio.estat(r, id -> infoPartit(server, id), ara,
+                Exportacio.Finestres.de(Config.finestres(), Batalles.finestraOberta(), ara));
         estat = json.getBytes(StandardCharsets.UTF_8);
     }
 

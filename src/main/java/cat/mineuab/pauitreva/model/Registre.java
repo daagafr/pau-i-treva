@@ -554,6 +554,17 @@ public final class Registre {
         return Resultat.DECLARADA;
     }
 
+    /** Per provar: la guerra deixa d'estar en preparació ara mateix. */
+    public Resultat acabarPreparacio(UUID guerra, long ara) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        g.avancarInici(ara);
+        canvi();
+        return Resultat.FET;
+    }
+
     /** Suma punts de guerra al país {@code perAquest} (i els treu al seu enemic). */
     public Resultat sumarPunts(UUID guerra, UUID perAquest, int punts) {
         Guerra g = guerres.get(guerra);
@@ -798,11 +809,14 @@ public final class Registre {
         if (!g.hiEs(qui)) {
             return Resultat.TIPUS_INVALID;
         }
-        UUID guanyador = g.enemic(qui);
-        Termes termes = guanyador.equals(g.atacant())
+        return ferPau(guerra, g.enemic(qui), termesRendicio(g, qui), false, ara, treva, humiliacio);
+    }
+
+    /** Els termes de la rendició de {@code qui} (vegeu {@link #rendir}). */
+    public static Termes termesRendicio(Guerra g, UUID qui) {
+        return g.enemic(qui).equals(g.atacant())
                 ? new Termes(g.chunks(), g.objectiu() == TipusObjectiu.HUMILIACIO)
                 : new Termes(java.util.Set.of(), true);
-        return ferPau(guerra, guanyador, termes, false, ara, treva, humiliacio);
     }
 
     /**
