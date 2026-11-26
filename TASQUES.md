@@ -11,16 +11,19 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 - [x] Ordres `/nacio` i `/diplomacia`, amb botons al xat per acceptar i rebutjar (25/11)
 - [x] Manteniment cada 30 s: caducitats, països sense party (després de 3 passades), nom i color a OPAC, aliats (25/11)
 - [x] API JSON de només lectura a `127.0.0.1:25582/estat.json` (25/11)
-- [ ] Provar la 0.1.0 dins del joc: fundar, canviar color i nom (que el Xaero ho ensenyi), aliança i pacte entre dos països, `/nacio capital`, reiniciar i que tot hi sigui
-- [ ] Mirar al servidor si el port 25582 és lliure i si `jdk.httpserver` funciona dins de NeoForge (ho diu el `latest.log` en arrencar)
-- [ ] Pantalla del joc (tecla N) **dibuixada pel servidor**: el client només pinta pestanyes, llistes i botons que li envia el servidor, i les fases noves només canvien el jar del servidor
-- [ ] Paquets de xarxa **opcionals** (`PayloadRegistrar.optional()`): qui tingui el modpack vell pot entrar i fa servir les ordres; qui tingui el nou, la pantalla. Així el modpack només es toca un cop
+- [ ] Provar-ho al Create amb gent: fundar, canviar color i nom (que el Xaero ho ensenyi), aliança i pacte entre dos països, `/nacio capital`, reiniciar i que tot hi sigui. Al servidor de proves (`./gradlew runProves`) ja ho fan les GameTests, i les dades es llegeixen bé després de reiniciar
+- [x] `jdk.httpserver` funciona dins de NeoForge (servidor de proves, 26/11). Escoltava a `::1` per culpa de `preferIPv6Addresses=system`: ara és 127.0.0.1 explícit
+- [ ] Mirar al Create si el port 25582 és lliure (ho diu el `latest.log` en arrencar)
+- [x] Pantalla del joc (tecla N) **dibuixada pel servidor**: pestanyes País, Membres, Diplomàcia, Guerres i Diari; cada botó fa una ordre del mod. Provada amb captures en un client sense ningú davant (26/11)
+- [x] Paquets de xarxa **opcionals** (`PayloadRegistrar.optional()`): qui tingui el modpack vell pot entrar i fa servir les ordres; qui tingui el nou, la pantalla (26/11)
+- [ ] Provar d'entrar al Create amb el modpack sense Pau i Treva (que entri i que les ordres vagin)
 - [ ] Mirar si l'App de Modrinth actualitza la instància al seu lloc (sense perdre mons, opcions ni mapes del Xaero) quan el modpack és el publicat a Modrinth, i explicar-ho a /create
-- [ ] Avisos a pantalla amb so (ara només surten al xat)
-- [ ] Claims del país: posar `partyOwnedClaims = true`, `primaryPartySystem = "default"` i els bonus per membre a la config d'OPAC (amb reinici)
-- [ ] Ordre d'admin per passar els claims i els chunks forçats de cada membre al líder, amb mode de prova que només compti, i una còpia del món abans
-- [ ] Quan canvia el líder d'una party: provar què fa OPAC amb els claims i, si cal, passar-los al nou líder
-- [ ] Treure el nom i el color del país dels claims del líder vell quan deixa de ser-ho
+- [x] Avisos a pantalla amb so: títol i so per als països afectats, so suau per a la resta (26/11)
+- [ ] Claims del país: posar al Create les opcions de [`opac/openpartiesandclaims-server.toml`](opac/openpartiesandclaims-server.toml) (amb reinici). Al servidor de proves ja hi són
+- [x] Ordre d'admin per passar els claims i els chunks forçats de cada membre al líder, amb mode de prova que només compti i diu si cabran als límits: `/nacio admin migra prova|fes confirmo` (26/11)
+- [ ] Al Create: còpia del món, `/nacio admin migra prova`, ajustar els bonus d'OPAC si cal, `fes confirmo` i reiniciar amb la config nova
+- [x] Quan canvia el líder d'una party, OPAC no mou els claims: el mod ho mira cada 5 s i passa al nou els chunks que tenia el vell com a líder (amb una foto del territori, perquè no s'emporti els d'una altra party) (26/11)
+- [x] Treure el nom i el color del país dels claims del líder vell quan deixa de ser-ho (26/11)
 - [x] Territori a l'API: dins de cada país a `estat.json`, els chunks reclamats pels membres, per dimensió (25/11)
 - [ ] Ruta `nacions.mineuab.org` al túnel de Cloudflare i el host a la CSP de la web
 
@@ -29,14 +32,14 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 - [x] Model de la guerra amb proves: declaració amb objectiu (conquesta de 1 a N chunks, humiliació, reparacions), preparació, punts de -100 a 100, pau imposada (amb prou punts) o negociada, rendició, treva en acabar, i desat al món (25/11)
 - [x] Finestres de guerra amb proves: de dilluns a divendres de 18:00 a 23:00, cap de setmana de 12:00 a 23:00, hora de Madrid, amb el canvi d'hora (25/11)
 - [x] Una pau proposada no es pot canviar just abans que l'altre l'accepti (cal dir quina s'ha vist) (25/11)
-- [ ] Ordres `/guerra` (declara, estat, pau, accepta, rendeix) i finestres a la config
-- [ ] Comprovar a OPAC, en declarar una conquesta, que els chunks són del defensor i toquen la frontera de l'atacant
+- [x] Ordres `/guerra` (objectiu, declara, estat, llista, finestres, pau, rendeix i admin) i finestres a la config (26/11)
+- [x] Comprovar a OPAC, en declarar una conquesta, que els chunks són del defensor, d'una sola peça i tocant la frontera de l'atacant, i que no són en una altra guerra (26/11)
 - [ ] Reparacions: decidir com es paguen (Numismatics o ítems); ara el model només fa conquesta i humiliació als termes
-- [ ] Guerres a l'API (`estat.json`)
-- [ ] Accés als chunks en disputa amb `IChunkAccessOverriderAPI` (destruir només l'objectiu, PvP a la resta)
-- [ ] Captura per presència, baixes, capital i puntuació de guerra
-- [ ] Traspàs dels chunks a OPAC en signar la pau (del líder del perdedor al del guanyador)
-- [ ] Pestanyes Guerres i Tractats, i barra de guerra
+- [x] Guerres i finestres a l'API (`estat.json`, versió 2) (26/11)
+- [x] Zona en disputa: no amb `IChunkAccessOverriderAPI` (no compta per al PvP ni per a les explosions) sinó amb una sub-config d'OPAC per guerra sense protecció durant la finestra; PvP amb `playersByPlayers`. Provat amb la protecció real d'OPAC (26/11)
+- [x] Captura per presència, baixes, vides, AFK, capitals, puntuació i pau automàtica (26/11)
+- [x] Traspàs dels chunks a OPAC en signar la pau, amb els chunks forçats (26/11)
+- [x] Pestanya Guerres (amb la pau i la rendició a dins) i barra de guerra (la de Minecraft, sense mod al client) (26/11)
 - [ ] Treure OPAC Warfare (abans, acabar les guerres que tingui obertes)
 
 ## Fase 3: títols i mapes
@@ -49,4 +52,27 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 
 - [ ] Nation també sincronitza les parties d'OPAC. Mentre tots dos mods hi siguin, pot ser que es trepitgin: provar-ho amb poca gent o treure Nation quan Pau i Treva tingui pantalla
 - [ ] Decidir si s'han de bloquejar les aliances fetes a mà amb `/oparties` entre dos països (ara el mod només afegeix les que falten)
-- [ ] `/nacio`, `/diplomacia`: mirar que cap altre mod del Create no faci servir aquests noms
+- [ ] `/nacio`, `/diplomacia`, `/guerra`: mirar que cap altre mod del Create no faci servir aquests noms
+
+## Per fer tu (David)
+
+- [ ] Decidir si la zona en disputa ha de ser oberta a tothom durant la finestra (ara sí: també els neutrals hi poden trencar). Si no, es pot vetar als neutrals amb `IChunkAccessOverriderAPI` (només per als blocs)
+- [ ] Decidir si el PvP de la guerra ha de ser per a tothom al territori dels dos països (ara sí: també neutrals i aliats, durant la finestra) o només entre bel·ligerants
+- [ ] Mirar els números de la guerra (`captura` i `punts` a la config) després de la primera guerra de veritat
+- [ ] Pujar els commits a GitHub perquè Actions en faci el jar (`git push` a `pau-i-treva/`)
+
+## Errors trobats i arreglats (26/11)
+
+- [x] L'API escoltava a `::1`: NeoForge arrenca la JVM amb `preferIPv6Addresses=system`
+- [x] `tryToReset` d'OPAC torna `playersByPlayers` a `true` (el de fàbrica), no al `false` del Create: el PvP s'hauria quedat obert després de cada guerra
+- [x] Dues guerres alhora compartien la sub-config de guerra d'un mateix amo; i un chunk podia ser en dues guerres
+- [x] Una sub-config feta a mà amb el nom `pit-guerra-...` deixava els chunks fora de la zona; ara només se salten els que ja són a la de la seva guerra, i es repassa cada 3 s
+
+## Idees
+
+- [ ] Aliats a la guerra: quan declaren la guerra a un aliat, demanar-li si hi entra (bàndols de més d'un país)
+- [ ] Títol de «Traïdor/a» en trencar un pacte, i prestigi per guanyar guerres (fase 3)
+- [ ] Mapa a la pantalla: pestanya amb la graella de chunks del voltant, per triar l'objectiu fent clic en lloc de caminar
+- [ ] Avisar el defensor quan entren enemics a la zona en disputa durant la finestra (com Claim Intrusion Alert, però de guerra)
+- [ ] Recompte de la batalla al diari en tancar cada finestra (baixes, chunks presos), i a la web
+- [ ] Les explosions de Create Big Cannons i les contraptions: provar-les a la zona en disputa al servidor de proves (ara només s'ha provat la TNT)

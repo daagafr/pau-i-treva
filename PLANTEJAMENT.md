@@ -1,6 +1,6 @@
 # Pau i Treva: mod propi de països per a MineUAB Create
 
-Plantejament del 25/11/2026. Les decisions del final ja estan preses. El 25/11 a la nit es va fer la part de servidor de la fase 1 (0.1.0): què hi ha i què falta és a [TASQUES.md](TASQUES.md).
+Plantejament del 25/11/2026. Les decisions del final ja estan preses. El 25/11 a la nit es va fer la part de servidor de la fase 1 (0.1.0), i el 26/11 la 0.2.0: la guerra sencera (fase 2), la pantalla del joc, la migració dels claims i el canvi de líder, amb proves dins d'un servidor de veritat amb OPAC. Què hi ha i què falta és a [TASQUES.md](TASQUES.md); com funciona, al [README](README.md).
 
 ## Què tenim ara i per què no va bé
 
@@ -78,9 +78,11 @@ Una guerra passa per quatre fases: declaració, preparació (24 h, perquè el de
 
 **Batalles i finestres.** Només es lluita dins de la finestra de guerra, en hora de Madrid: de dilluns a divendres, de 18:00 a 23:00; dissabte i diumenge, de 12:00 a 23:00 (decidit el 25/11). Ha de ser configurable. Fora de l'horari, tot torna a estar protegit. Durant la finestra:
 
-- Hi ha PvP entre bel·ligerants dins dels seus claims.
-- Els chunks de l'objectiu són **zona en disputa**: els enemics hi poden trencar i posar blocs i hi entren les explosions (via `IChunkAccessOverriderAPI`). La resta del territori dels bel·ligerants només té PvP: no s'hi pot trencar res (decidit el 25/11).
+- Hi ha PvP dins dels claims dels bel·ligerants.
+- Els chunks de l'objectiu són **zona en disputa**: s'hi poden trencar i posar blocs i hi entren les explosions. La resta del territori dels bel·ligerants només té PvP: no s'hi pot trencar res (decidit el 25/11).
 - Els països que no són a la guerra continuen igual de protegits.
+
+**Com es fa a OPAC (26/11).** `IChunkAccessOverriderAPI` no serveix: OPAC no el consulta ni per al PvP ni per a les explosions. En lloc d'això, en declarar la guerra els chunks de l'objectiu passen a una sub-config del seu amo (una per guerra, `pit-guerra-N`) que durant la finestra té `protectClaimedChunks = false`; i el PvP s'obre posant `playersByPlayers = true` a la config dels membres dels dos països, cosa que només es pot fer si l'opció és a `opConfigurablePlayerConfigOptions` (vegeu `opac/openpartiesandclaims-server.toml`). Conseqüència: durant la finestra, la zona en disputa és oberta a tothom (també als neutrals), i el PvP del territori dels dos països també. Si es vol limitar als bel·ligerants, vegeu les decisions pendents a TASQUES.md.
 
 **Puntuació de guerra (0–100).** Surt de:
 
@@ -168,10 +170,10 @@ La pantalla del joc va des de la primera versió (decidit el 25/11). Cada fase h
 
 ## Coses que cal provar abans
 
-- Si el `IChunkAccessOverriderAPI` d'OPAC també decideix sobre les explosions dels canons de Create Big Cannons i dels míssils, o només sobre els jugadors. Si no, cal canviar també les opcions de protecció dels claims en disputa mentre dura la finestra. (Ja és a PENDENTS.md: «provar com tracta OPAC els obusos de Big Cannons».)
+- ~~Si el `IChunkAccessOverriderAPI` d'OPAC també decideix sobre les explosions~~: no (26/11), i per això la zona en disputa es fa amb una sub-config sense protecció. Les explosions de TNT hi entren (provat); falta provar els obusos de Create Big Cannons i els míssils.
 - Com tracta OPAC les contraptions de Create (trepants, serres) en un claim enemic. Warfare té un mod germà, Better Protection, que ho cobreix; s'ha de mirar si ens cal.
-- Claims del país: què passa amb els claims quan el país canvia de líder. Com que l'amo tècnic és el líder, potser es queden amb el vell i deixen de ser del país. Si és així, el mod els ha de passar al nou líder.
-- Que els chunks forçats continuïn funcionant després de passar-los al líder, i que el Xaero ensenyi el nom del país i no el del líder.
+- ~~Claims del país: què passa amb els claims quan el país canvia de líder~~: OPAC els deixa al vell (26/11). El mod els passa al nou (provat).
+- Que els chunks forçats continuïn funcionant després de passar-los al líder (el claim continua marcat com a forçat: provat; falta veure que la granja segueixi anant al Create), i que el Xaero ensenyi el nom del país i no el del líder.
 
 ## Decisions per al David
 

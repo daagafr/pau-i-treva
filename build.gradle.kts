@@ -5,7 +5,7 @@ plugins {
     id("net.neoforged.moddev") version "2.0.148"
 }
 
-val versioMod = "0.1.0"
+val versioMod = "0.2.0"
 version = versioMod
 group = "cat.mineuab.pauitreva"
 

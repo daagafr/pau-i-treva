@@ -221,6 +221,10 @@ public final class Ordres {
         s.sendSuccess(() -> Missatges.gris("Capital: " + capital
                 + (p.bandera().isEmpty() ? "" : " · Bandera: " + p.bandera())), false);
 
+        if (p.humiliat(ara())) {
+            s.sendSuccess(() -> Component.literal("Humiliat per una guerra perduda fins al " + Missatges.data(p.humiliatFins()) + ".")
+                    .withStyle(ChatFormatting.RED), false);
+        }
         Map<UUID, EstatRelacio> rel = r.relacionsDe(p.id());
         if (rel.isEmpty()) {
             s.sendSuccess(() -> Missatges.gris("Sense aliances ni pactes."), false);
