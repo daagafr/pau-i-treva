@@ -98,12 +98,26 @@ public final class ApiWeb {
                 e.sendResponseHeaders(405, -1);
                 return;
             }
-            if (!"/estat.json".equals(cami)) {
+            byte[] cos;
+            if ("/estat.json".equals(cami)) {
+                cos = estat;
+                e.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+            } else if (cami.startsWith("/banderes/") && cami.endsWith(".png")) {
+                // /banderes/mineuab/catalunya.png → la bandera mineuab:catalunya
+                String resta = cami.substring("/banderes/".length(), cami.length() - ".png".length());
+                int barra = resta.indexOf('/');
+                var b = barra <= 0 ? java.util.Optional.<cat.mineuab.pauitreva.banderes.Banderes.Bandera>empty()
+                        : cat.mineuab.pauitreva.banderes.Banderes.bandera(resta.substring(0, barra) + ":" + resta.substring(barra + 1));
+                if (b.isEmpty()) {
+                    e.sendResponseHeaders(404, -1);
+                    return;
+                }
+                cos = b.get().png();
+                e.getResponseHeaders().set("Content-Type", "image/png");
+            } else {
                 e.sendResponseHeaders(404, -1);
                 return;
             }
-            byte[] cos = estat;
-            e.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
             e.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
             e.getResponseHeaders().set("Cache-Control", "public, max-age=15");
             e.getResponseHeaders().set("X-Content-Type-Options", "nosniff");

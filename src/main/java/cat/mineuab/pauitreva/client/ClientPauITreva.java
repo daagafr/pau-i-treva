@@ -35,6 +35,7 @@ public final class ClientPauITreva {
     @SubscribeEvent
     static void preparar(FMLClientSetupEvent e) {
         Xarxa.rebreAlClient = PantallaPais::rebre;
+        Xarxa.rebreImatgeAlClient = BanderesClient::rebre;
         NeoForge.EVENT_BUS.addListener(ClientTickEvent.Post.class, ClientPauITreva::tick);
     }
 

@@ -181,7 +181,7 @@ public final class ProvesGuerra {
             Guerres.declarar(server, ata, def, TipusObjectiu.CONQUESTA, Set.of(new Chunk(d, x0 + 4, z)));
             h.fail("s'ha pogut declarar una conquesta que no toca la frontera");
         } catch (Guerres.Error e) {
-            cert(h, r.guerres().isEmpty(), "la declaració dolenta ha deixat una guerra");
+            cert(h, r.guerraEntre(ata.id(), def.id()).isEmpty(), "la declaració dolenta ha deixat una guerra");
         }
 
         Guerra g;

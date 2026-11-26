@@ -185,16 +185,19 @@ public final class PantallaPais extends Screen {
                 continue;
             }
             int fx = ex;
+            int altLinia = ALT_FILA;
             for (Peca peca : f.peces()) {
                 int w = amplada(peca);
                 if (fx > ex && fx + w > ex + ew) {
                     fx = ex;
-                    y += ALT_FILA + 2;
+                    y += altLinia + 2;
+                    altLinia = ALT_FILA;
                 }
                 posar(peca, fx, y, w);
+                altLinia = Math.max(altLinia, alcada(peca));
                 fx += w + 4;
             }
-            y += ALT_FILA + 4;
+            y += altLinia + 4;
         }
         tancarSeccio(iniciSeccio, y);
         alturaContingut = y + 6 + scroll - dalt;
@@ -214,7 +217,7 @@ public final class PantallaPais extends Screen {
         Pantalla.Capcalera c = dades.capcalera();
         int ex = x0 + 14;
         int ey = y0 + 9;
-        int xx = ex + 40;
+        int xx = nomX();
         int xy = y0 + 34;
         for (Peca p : c.xips()) {
             if (p instanceof Icona i) {
@@ -228,16 +231,30 @@ public final class PantallaPais extends Screen {
                 xx += w + 10;
             }
         }
-        ajudes.add(new Ajuda(ex, ey, 30, 36, c.sigla().isEmpty() ? Component.literal("Pau i Treva")
+        ajudes.add(new Ajuda(ex, ey, ambBandera() ? 54 : 30, 36, c.sigla().isEmpty() ? Component.literal("Pau i Treva")
                 : Component.literal("[" + c.sigla() + "] ").append(c.nom()), false));
+    }
+
+    /** Si la capçalera porta la bandera del país (en lloc de l'escut de color). */
+    private boolean ambBandera() {
+        return BanderesClient.textura(dades.capcalera().bandera()) != null;
+    }
+
+    /** On comença el nom del país a la capçalera. */
+    private int nomX() {
+        return x0 + 14 + (ambBandera() ? 60 : 40);
     }
 
     private void dibuixarCapcalera(GuiGraphics g) {
         Pantalla.Capcalera c = dades.capcalera();
         int ex = x0 + 14;
         int ey = y0 + 9;
-        Estil.escut(g, font, ex, ey, 30, 36, c.color(), c.sigla());
-        int nx = ex + 40;
+        if (ambBandera()) {
+            Estil.bandera(g, c.bandera(), ex + 3, ey + 3, 48, 32, false);
+        } else {
+            Estil.escut(g, font, ex, ey, 30, 36, c.color(), c.sigla());
+        }
+        int nx = nomX();
         g.pose().pushPose();
         g.pose().translate(nx, y0 + 10, 0);
         g.pose().scale(1.6f, 1.6f, 1f);
@@ -264,6 +281,11 @@ public final class PantallaPais extends Screen {
         g.fill(x0 + 8, y0 + ALT_CAPCALERA + 2, x0 + ample - 8, y0 + ALT_CAPCALERA + 3, Estil.OR_FOSC);
     }
 
+    /** Quanta alçada ocupa una peça (les banderes poden ser més altes que una fila normal). */
+    private int alcada(Peca peca) {
+        return peca instanceof Pantalla.Bandera b ? b.alt() + (b.ample() >= 30 ? 8 : 2) : ALT_FILA;
+    }
+
     private int amplada(Peca peca) {
         return switch (peca) {
             case Text t -> font.width(t.text());
@@ -271,7 +293,8 @@ public final class PantallaPais extends Screen {
             case Entrada e -> Math.max(24, e.ample());
             case Icona i -> 16 + 3 + font.width(i.text());
             case Barra b -> Math.max(30, b.ample());
-            case Escut e -> 12;
+            case Escut e -> BanderesClient.textura(e.bandera()) != null ? 16 : 12;
+            case Pantalla.Bandera b -> b.ample() + (b.ample() >= 30 ? 8 : 2);
             case Seccio s -> font.width(s.titol());
         };
     }
@@ -319,10 +342,24 @@ public final class PantallaPais extends Screen {
                 }
             }
             case Escut e -> {
-                dibuixos.add(g -> Estil.escut(g, font, x, y + 2, 12, 14, e.color(), e.sigla()));
-                if (!e.ajuda().getString().isEmpty()) {
-                    ajudes.add(new Ajuda(x, y, 12, ALT_FILA, e.ajuda(), true));
+                if (BanderesClient.textura(e.bandera()) != null) {
+                    dibuixos.add(g -> Estil.bandera(g, e.bandera(), x + 1, y + 4, 15, 10, false));
+                } else {
+                    dibuixos.add(g -> Estil.escut(g, font, x, y + 2, 12, 14, e.color(), e.sigla()));
                 }
+                if (!e.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, w, ALT_FILA, e.ajuda(), true));
+                }
+            }
+            case Pantalla.Bandera b -> {
+                int marge = b.ample() >= 30 ? 4 : 1;
+                BotoBandera boto = new BotoBandera(x, y, b.ample() + 2 * marge, b.alt() + 2 * marge, b.id(), marge,
+                        z -> clicar(b.accio()));
+                boto.active = !b.accio().isEmpty();
+                if (!b.ajuda().getString().isEmpty()) {
+                    ajudes.add(new Ajuda(x, y, b.ample() + 2 * marge, b.alt() + 2 * marge, b.ajuda(), true));
+                }
+                afegir(boto, y, b.alt() + 2 * marge);
             }
             case Seccio s -> textos.add(new Linia(s.titol().getVisualOrderText(), x, y + 5, Estil.OR_CLAR));
         }
@@ -330,7 +367,11 @@ public final class PantallaPais extends Screen {
 
     /** Afegeix un botó o un camp, i l'amaga si queda fora de la zona visible. */
     private void afegir(AbstractWidget w, int y) {
-        w.visible = y >= dalt && y + ALT_FILA <= baix;
+        afegir(w, y, ALT_FILA);
+    }
+
+    private void afegir(AbstractWidget w, int y, int alt) {
+        w.visible = y >= dalt && y + alt <= baix;
         addRenderableWidget(w);
     }
 

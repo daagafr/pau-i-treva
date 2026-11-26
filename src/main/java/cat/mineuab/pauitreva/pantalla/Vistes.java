@@ -1,6 +1,7 @@
 package cat.mineuab.pauitreva.pantalla;
 
 import cat.mineuab.pauitreva.Config;
+import cat.mineuab.pauitreva.banderes.Banderes;
 import cat.mineuab.pauitreva.guerra.Batalles;
 import cat.mineuab.pauitreva.model.EstatRelacio;
 import cat.mineuab.pauitreva.model.Esdeveniment;
@@ -96,6 +97,10 @@ public final class Vistes {
                     dissoldre(q, f);
                     activa = PAIS;
                 }
+                case "banderes" -> {
+                    banderes(q, f);
+                    activa = PAIS;
+                }
                 default -> {
                     pais(q, f);
                     activa = PAIS;
@@ -115,7 +120,7 @@ public final class Vistes {
     /** A dalt de tot: l'escut i el nom del país, el lema i uns xips amb el més important. */
     private static Pantalla.Capcalera capcalera(Qui q) {
         if (q.pais == null) {
-            return new Pantalla.Capcalera(0x8C6F35, "", Component.literal("Pau i Treva"),
+            return new Pantalla.Capcalera(0x8C6F35, "", "", Component.literal("Pau i Treva"),
                     Component.literal("No ets de cap país").withStyle(s -> s.withColor(GRIS)),
                     List.of(icona("escut", q.r.paisos().size() + " països", "Països que hi ha al servidor"),
                             icona("guerra", q.r.guerres().size() + " guerres", "Guerres obertes ara")));
@@ -141,7 +146,7 @@ public final class Vistes {
         Component subtitol = p.lema().isEmpty()
                 ? Component.literal("Fundat el " + Missatges.dia(p.fundat())).withStyle(s -> s.withColor(GRIS))
                 : Component.literal("«" + p.lema() + "»").withStyle(s -> s.withColor(GRIS).withItalic(true));
-        return new Pantalla.Capcalera(p.color(), p.sigla(), Component.literal(p.nom()), subtitol, xips);
+        return new Pantalla.Capcalera(p.color(), p.sigla(), bandera(p), Component.literal(p.nom()), subtitol, xips);
     }
 
     // ---------------------------------------------------------------- Peces
@@ -174,7 +179,12 @@ public final class Vistes {
     }
 
     private static Pantalla.Escut escut(Pais p) {
-        return new Pantalla.Escut(p.color(), p.sigla(), Component.literal(Registre.etiqueta(p)));
+        return new Pantalla.Escut(p.color(), p.sigla(), bandera(p), Component.literal(Registre.etiqueta(p)));
+    }
+
+    /** La bandera del país si existeix al servidor (si no, buida: es pinta l'escut de color). */
+    private static String bandera(Pais p) {
+        return Banderes.existeix(p.bandera()) ? p.bandera() : "";
     }
 
     /** El país amb el seu escut, per a les llistes. */
@@ -239,14 +249,31 @@ public final class Vistes {
                 icona("diari", "Fundat el " + Missatges.dia(p.fundat()), "")));
         String capital = p.capital() == null ? "Sense capital (a la guerra, la del mig del territori)"
                 : "Capital al chunk " + p.capital().chunkX() + ", " + p.capital().chunkZ();
-        f.add(Fila.de(icona("capital", capital, p.capital() == null ? "" : p.capital().dimensio()),
-                icona("pau", p.bandera().isEmpty() ? "Sense bandera" : "Bandera: " + p.bandera(), "")));
+        f.add(Fila.de(icona("capital", capital, p.capital() == null ? "" : p.capital().dimensio())));
         List<Guerra> guerres = q.r.guerresDe(p.id());
         if (!guerres.isEmpty()) {
             f.add(Fila.de(new Pantalla.Icona("guerra", Component.literal("En guerra amb " + guerres.size()
                     + (guerres.size() == 1 ? " país" : " països")).withStyle(s -> s.withColor(to(ChatFormatting.RED))), Component.empty()),
                     boto("Mira-ho", "pestanya:" + GUERRES)));
         }
+        f.add(titol("Bandera", "pau"));
+        String b = bandera(p);
+        List<Peca> filaB = new ArrayList<>();
+        if (b.isEmpty()) {
+            filaB.add(gris("Sense bandera. "));
+        } else {
+            filaB.add(new Pantalla.Bandera(b, 72, 48, "", Component.literal(Banderes.bandera(b).map(Banderes.Bandera::nom)
+                    .orElse(b))));
+            filaB.add(text(" " + Banderes.bandera(b).map(Banderes.Bandera::nom).orElse(b) + "  "));
+        }
+        if (q.pot(Permis.EDITAR)) {
+            filaB.add(boto(b.isEmpty() ? "Tria'n una…" : "Canvia-la…", "pestanya:banderes", ChatFormatting.YELLOW,
+                    "La mateixa que es pot penjar al joc amb Immersive Paintings."));
+            if (!b.isEmpty()) {
+                filaB.add(boto("Treu-la", "/nacio bandera"));
+            }
+        }
+        f.add(new Fila(filaB));
         if (!q.pot(Permis.EDITAR)) {
             f.add(Fila.de(gris("Per canviar les dades del país cal ser " + p.nomRang(p.rangPer(Permis.EDITAR)) + " o més.")));
             return;
@@ -264,12 +291,35 @@ public final class Vistes {
         }
         f.add(new Fila(colors));
         f.add(Fila.de(text("Lema"), entrada("lema", p.lema(), 220, Validacio.LEMA_MAX), boto("Desa", "/nacio lema {lema}")));
-        f.add(Fila.de(text("Bandera"), entrada("bandera", p.bandera(), 160, 64), boto("Desa", "/nacio bandera {bandera}")));
         f.add(Fila.de(boto("Posa la capital on soc", "/nacio capital", ChatFormatting.YELLOW,
                 "El chunk on ets ara, que ha de ser del país.")));
         if (q.rang == Rang.LIDER) {
             f.add(Fila.de(boto("Dissol el país…", "pestanya:dissol", ChatFormatting.RED,
                     "La party d'OPAC i els claims es queden.")));
+        }
+    }
+
+    /** La galeria de banderes: un clic i és la del país. */
+    private static void banderes(Qui q, List<Fila> f) {
+        if (q.pais == null) {
+            pais(q, f);
+            return;
+        }
+        boolean pot = q.pot(Permis.EDITAR);
+        f.add(titol("Tria la bandera de " + Registre.etiqueta(q.pais), "pau"));
+        f.add(Fila.de(gris(pot ? "Fes clic a la que vulguis. Són les del datapack mineuab-banderes: les mateixes que es poden "
+                + "penjar al joc." : "Només ho pot canviar qui sigui " + q.pais.nomRang(q.pais.rangPer(Permis.EDITAR)) + " o més.")));
+        f.add(Fila.de(boto("Tornar", "pestanya:" + PAIS)));
+        List<Peca> fila = new ArrayList<>();
+        for (Banderes.Bandera b : Banderes.totes()) {
+            boolean seva = b.id().equals(q.pais.bandera());
+            fila.add(new Pantalla.Bandera(b.id(), 48, 32, pot && !seva ? "/nacio bandera " + b.id() : "",
+                    Component.literal(b.nom() + (seva ? " (la vostra)" : ""))));
+        }
+        if (fila.isEmpty()) {
+            f.add(Fila.de(gris("Al servidor no hi ha cap bandera (falta el datapack mineuab-banderes?).")));
+        } else {
+            f.add(new Fila(fila));
         }
     }
 

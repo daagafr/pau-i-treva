@@ -42,12 +42,35 @@ public final class Xarxa {
     public static Consumer<Pantalla> rebreAlClient = p -> {
     };
 
+    /** El que fa el client quan rep una imatge (una bandera). */
+    public static Consumer<Imatge> rebreImatgeAlClient = i -> {
+    };
+
+    /** Les banderes que ja s'han enviat a cada jugador en aquesta sessió (el client les guarda). */
+    private static final Map<UUID, java.util.Set<String>> ENVIADES = new HashMap<>();
+
     public record Mostra(Pantalla pantalla) implements CustomPacketPayload {
         public static final Type<Mostra> TIPUS = new Type<>(ResourceLocation.fromNamespaceAndPath(PauITreva.ID, "pantalla"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Mostra> CODI = Pantalla.CODI.map(Mostra::new, Mostra::pantalla);
 
         @Override
         public Type<Mostra> type() {
+            return TIPUS;
+        }
+    }
+
+    /** Una imatge (una bandera): l'id i el PNG. El client en fa una textura i la guarda mentre dura la sessió. */
+    public record Imatge(String id, byte[] png) implements CustomPacketPayload {
+        public static final Type<Imatge> TIPUS = new Type<>(ResourceLocation.fromNamespaceAndPath(PauITreva.ID, "imatge"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, Imatge> CODI = StreamCodec.of(
+                (buf, i) -> {
+                    buf.writeUtf(i.id(), 256);
+                    buf.writeByteArray(i.png());
+                },
+                buf -> new Imatge(buf.readUtf(256), buf.readByteArray(512 * 1024)));
+
+        @Override
+        public Type<Imatge> type() {
             return TIPUS;
         }
     }
@@ -67,9 +90,11 @@ public final class Xarxa {
     }
 
     public static void registrar(RegisterPayloadHandlersEvent e) {
-        // Versió 2: pantalla amb capçalera, icones, barres i seccions (la 1 només tenia text, botons i camps).
-        PayloadRegistrar r = e.registrar("2").optional();
+        // Versió 3: banderes (la 2 hi va afegir capçalera, icones, barres i seccions; la 1 només tenia text, botons i
+        // camps).
+        PayloadRegistrar r = e.registrar("3").optional();
         r.playToClient(Mostra.TIPUS, Mostra.CODI, (p, context) -> rebreAlClient.accept(p.pantalla()));
+        r.playToClient(Imatge.TIPUS, Imatge.CODI, (p, context) -> rebreImatgeAlClient.accept(p));
         r.playToServer(Accio.TIPUS, Accio.CODI, (p, context) -> {
             if (context.player() instanceof ServerPlayer jugador) {
                 accio(jugador, p.accio());
@@ -110,7 +135,36 @@ public final class Xarxa {
             return;
         }
         OBERTES.put(jugador.getUUID(), pestanya);
-        PacketDistributor.sendToPlayer(jugador, new Mostra(Vistes.construir(jugador, pestanya, avisos)));
+        Pantalla p = Vistes.construir(jugador, pestanya, avisos);
+        enviarBanderes(jugador, p);
+        PacketDistributor.sendToPlayer(jugador, new Mostra(p));
+    }
+
+    /** Abans de la pantalla, les banderes que surten a la pantalla i que el jugador encara no té. */
+    private static void enviarBanderes(ServerPlayer jugador, Pantalla p) {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        if (!p.capcalera().bandera().isEmpty()) {
+            ids.add(p.capcalera().bandera());
+        }
+        for (Pantalla.Fila f : p.files()) {
+            for (Pantalla.Peca peca : f.peces()) {
+                if (peca instanceof Pantalla.Escut e && !e.bandera().isEmpty()) {
+                    ids.add(e.bandera());
+                } else if (peca instanceof Pantalla.Bandera b) {
+                    ids.add(b.id());
+                }
+            }
+        }
+        java.util.Set<String> ja = ENVIADES.computeIfAbsent(jugador.getUUID(), k -> new java.util.HashSet<>());
+        for (String id : ids) {
+            if (ja.contains(id)) {
+                continue;
+            }
+            cat.mineuab.pauitreva.banderes.Banderes.bandera(id).ifPresent(b -> {
+                PacketDistributor.sendToPlayer(jugador, new Imatge(b.id(), b.png()));
+                ja.add(b.id());
+            });
+        }
     }
 
     /** Fa una ordre com si l'hagués escrit el jugador i en guarda les respostes per ensenyar-les a la pantalla. */
@@ -148,5 +202,6 @@ public final class Xarxa {
     /** En sortir, s'oblida la pestanya. */
     public static void sortir(ServerPlayer jugador) {
         OBERTES.remove(jugador.getUUID());
+        ENVIADES.remove(jugador.getUUID());
     }
 }

@@ -31,7 +31,7 @@ import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 public final class ProvesPantalla {
 
     private static final List<String> PESTANYES = List.of(Vistes.PAIS, Vistes.MEMBRES, Vistes.DIPLOMACIA, Vistes.GUERRES,
-            Vistes.DIARI, "dissol", "declara:PIN", "rendir:PIN", "una-que-no-existeix");
+            Vistes.DIARI, "dissol", "banderes", "declara:PIN", "rendir:PIN", "una-que-no-existeix");
 
     private ProvesPantalla() {
     }
@@ -67,6 +67,37 @@ public final class ProvesPantalla {
                 cert(h, buf.readableBytes() == 0, "sobren bytes a la pestanya " + pestanya);
             }
         }
+        // Les banderes del datapack de proves, i l'ordre que en posa una.
+        cert(h, cat.mineuab.pauitreva.banderes.Banderes.totes().size() >= 70, "no s'han carregat les banderes del datapack");
+        cert(h, cat.mineuab.pauitreva.banderes.Banderes.existeix("mineuab:catalunya"), "no hi ha la senyera");
+        cert(h, "Catalunya (senyera)".equals(cat.mineuab.pauitreva.banderes.Banderes.bandera("mineuab:catalunya")
+                .orElseThrow().nom()) || !cat.mineuab.pauitreva.banderes.Banderes.bandera("mineuab:catalunya").orElseThrow()
+                .nom().isEmpty(), "la senyera no té nom");
+        try {
+            server.getCommands().getDispatcher().execute("nacio bandera mineuab:no_existeix",
+                    lider.createCommandSourceStack());
+            h.fail("s'ha pogut posar una bandera que no existeix");
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            // Bé: no existeix.
+        }
+        try {
+            server.getCommands().getDispatcher().execute("nacio bandera mineuab:catalunya", lider.createCommandSourceStack());
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            h.fail("no s'ha pogut posar la senyera: " + e.getMessage());
+        }
+        cert(h, "mineuab:catalunya".equals(r.pais(p1.getId()).orElseThrow().bandera()), "la bandera no s'ha desat");
+        Pantalla ambBandera = Vistes.construir(lider, Vistes.PAIS, List.of());
+        cert(h, "mineuab:catalunya".equals(ambBandera.capcalera().bandera()), "la capçalera no porta la bandera");
+        Pantalla galeria = Vistes.construir(lider, "banderes", List.of());
+        long nBanderes = galeria.files().stream().flatMap(fi -> fi.peces().stream())
+                .filter(pe -> pe instanceof Pantalla.Bandera).count();
+        cert(h, nBanderes >= 70, "la galeria no té totes les banderes (" + nBanderes + ")");
+        // L'API també les serveix.
+        String png = ProvesGuerra.llegir("http://127.0.0.1:" + cat.mineuab.pauitreva.Config.API_PORT.get()
+                + "/banderes/mineuab/catalunya.png");
+        cert(h, png != null && png.length() > 8 && png.substring(1, 4).equals("PNG"), "l'API no serveix la bandera: "
+                + (png == null ? null : png.substring(0, Math.min(20, png.length()))));
+
         // Des de la pantalla només es poden fer ordres del mod.
         cert(h, Xarxa.permesa("/nacio info"), "/nacio info no és permesa");
         cert(h, Xarxa.permesa("/guerra pau AME proposa blanca"), "/guerra pau no és permesa");

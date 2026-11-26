@@ -22,8 +22,11 @@ El nom ve de la Pau i Treva de Déu (Toluges, 1027): dies en què no es podia ll
 - **Avisos a pantalla amb so** (títols, barra d'acció i barra de guerra), amb paquets de Minecraft normals.
 - **Territori del país**: ordre d'admin per passar els claims dels membres al líder (claims de party d'OPAC), i quan canvia
   el líder, el territori passa al nou.
+- **Banderes**: les pintures dels datapacks (les 70 de `mineuab-banderes`). La del país surt a la pantalla amb un marc d'or
+  (si no en té, un escut del seu color amb la sigla) i es tria d'una galeria. El servidor envia les imatges al client.
 - **API JSON** de només lectura a `http://127.0.0.1:25582/estat.json`: països (membres, títols, territori, humiliació),
   relacions, guerres (objectiu, control de cada chunk, capitals, punts, baixes), finestres i les 100 últimes entrades del diari.
+  Les banderes, a `/banderes/<espai>/<nom>.png` (`/banderes/mineuab/catalunya.png`).
 
 El jar va al servidor i al modpack. Els dos paquets de la pantalla són **opcionals**: qui no tingui el mod pot entrar al
 servidor i fer servir les ordres; només no tindrà la tecla N.
@@ -39,7 +42,7 @@ servidor i fer servir les ordres; només no tindrà la tecla N.
 | `/nacio llista` | tothom | Tots els països |
 | `/nacio diari` | tothom | Les 10 últimes entrades del diari diplomàtic |
 | `/nacio funda <sigla> <nom>` | qui no té país | Funda un país (crea la party si cal; si ja n'ets d'una, n'has de ser el propietari) |
-| `/nacio nom <nom>`, `sigla`, `color #RRGGBB`, `lema [text]`, `bandera [id]`, `capital` | permís `editar` | Canvia les dades del país. La capital és el chunk on ets, i ha de ser del país |
+| `/nacio nom <nom>`, `sigla`, `color #RRGGBB`, `lema [text]`, `bandera [id]`, `capital` | permís `editar` | Canvia les dades del país. La bandera ha d'existir (`mineuab:catalunya`; sense id, es treu). La capital és el chunk on ets, i ha de ser del país |
 | `/nacio rang <rang> [nom]` | permís `editar` | Posa nom a un rang (sense nom, torna al de per defecte) |
 | `/nacio permis <permis> <rang>` | líder | Quin rang cal per a `editar`, `diplomacia`, `trencar`, `guerra` o `pau` |
 | `/nacio dissol confirmo` | líder | Dissol el país (les guerres s'acaben en blanc; la party i els claims es queden) |

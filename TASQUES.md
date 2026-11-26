@@ -75,7 +75,8 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
   - [x] Icones refetes a 32×32 amb volum i més detall, com va demanar David (26/11)
   - [ ] Que David ho miri i digui què li agrada i què no (captures a `build/proves-client/screenshots`, amb `./gradlew runProvaClient`)
   - [ ] Pestanya Mapa: la graella de chunks del voltant amb els colors dels països, per triar l'objectiu fent clic
-  - [ ] Les banderes de veritat (les pintures del datapack `mineuab-banderes`) en lloc de l'escut de color
+  - [x] Les banderes de veritat (les 70 del datapack `mineuab-banderes`): a la capçalera i a les llistes amb marc d'or, galeria per triar-la d'un clic, `/nacio bandera` comprova que existeixi, i l'API les serveix a `/banderes/<espai>/<nom>.png`. El servidor envia les imatges al client: afegir-ne una al datapack no demana tocar el modpack (26/11)
+  - [ ] Les pintures que pugen els jugadors amb Immersive Paintings (ara només surten les dels datapacks)
   - [ ] Barra de guerra pròpia a dalt de la pantalla de joc (en lloc de la boss bar), amb els dos escuts
   - [ ] Diari més compacte (data i text en una línia) i amb filtres (guerres, diplomàcia, el meu país)
   - [ ] Etiquetes alineades als formularis (ara cada camp comença on acaba la seva etiqueta)

@@ -41,7 +41,7 @@ public final class ProvaPantalla {
 
     private static final List<String> PASSOS = List.of("obrir", "pestanya:membres", "pestanya:diplomacia",
             "pestanya:guerres", "pestanya:diari", "pestanya:declara:ARA", "pestanya:rendir:OCC",
-            "pestanya:diplomacia", "/diplomacia accepta ARA", "/nacio sigla X");
+            "pestanya:diplomacia", "/diplomacia accepta ARA", "/nacio sigla X", "pestanya:banderes");
     private static int ticks;
     private static int pas = -1;
 
@@ -96,11 +96,13 @@ public final class ProvaPantalla {
             cat.addMember(UUID.randomUUID(), PartyMemberRank.CLAIMER, "Pere");
             r.fundar(cat.getId(), "Catalunya", "CAT", 0xF1C40F, ara);
             r.canviarLema(cat.getId(), "Som i serem");
+            r.canviarBandera(cat.getId(), "mineuab:catalunya");
             r.canviarNomRang(cat.getId(), Rang.LIDER, "President/a");
             r.canviarNomRang(cat.getId(), Rang.MINISTRE, "Conseller/a");
             GameProfile gaston = new GameProfile(UUID.randomUUID(), "Gaston");
             IServerPartyAPI occ = opac.getPartyManager().createPartyForOwner(gaston);
             r.fundar(occ.getId(), "Occitània", "OCC", 0xC0392B, ara);
+            r.canviarBandera(occ.getId(), "mineuab:franca");
             GameProfile jaume = new GameProfile(UUID.randomUUID(), "Jaume");
             IServerPartyAPI ara2 = opac.getPartyManager().createPartyForOwner(jaume);
             r.fundar(ara2.getId(), "Aragó", "ARA", 0xD35400, ara);

@@ -24,8 +24,11 @@ import net.minecraft.network.codec.StreamCodec;
 public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String activa, List<Component> avisos,
                        List<Fila> files) {
 
-    /** {@code sigla} buida vol dir que qui mira no té país (es pinta l'escut del mod). */
-    public record Capcalera(int color, String sigla, Component nom, Component subtitol, List<Peca> xips) {
+    /**
+     * {@code sigla} buida vol dir que qui mira no té país (es pinta l'escut del mod). {@code bandera}: l'id de la
+     * bandera del país (es pinta dins de l'escut), o buida.
+     */
+    public record Capcalera(int color, String sigla, String bandera, Component nom, Component subtitol, List<Peca> xips) {
     }
 
     /** {@code icona}: el nom d'una icona de l'atles (vegeu eines/icones.py). */
@@ -41,7 +44,7 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
     }
 
     /** Un tros d'una fila. */
-    public sealed interface Peca permits Text, Boto, Entrada, Icona, Barra, Escut, Seccio {
+    public sealed interface Peca permits Text, Boto, Entrada, Icona, Barra, Escut, Seccio, Bandera {
     }
 
     public record Text(Component text) implements Peca {
@@ -67,8 +70,12 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
             implements Peca {
     }
 
-    /** Un escut petit d'un país (color i sigla). */
-    public record Escut(int color, String sigla, Component ajuda) implements Peca {
+    /** Un escut petit d'un país: la seva bandera, o el color i la sigla si no en té. */
+    public record Escut(int color, String sigla, String bandera, Component ajuda) implements Peca {
+    }
+
+    /** Una bandera, amb marc. Si té {@code accio}, és un botó (per triar-la). */
+    public record Bandera(String id, int ample, int alt, String accio, Component ajuda) implements Peca {
     }
 
     /** El títol d'una secció. Sol en una fila: les files de sota, fins a la secció següent, van dins d'un marc. */
@@ -86,6 +93,7 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
         Capcalera c = p.capcalera();
         buf.writeInt(c.color());
         CADENA.encode(buf, c.sigla());
+        CADENA.encode(buf, c.bandera());
         TEXT.encode(buf, c.nom());
         TEXT.encode(buf, c.subtitol());
         escriurePeces(buf, c.xips());
@@ -145,7 +153,16 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
                         buf.writeByte(5);
                         buf.writeInt(e.color());
                         CADENA.encode(buf, e.sigla());
+                        CADENA.encode(buf, e.bandera());
                         TEXT.encode(buf, e.ajuda());
+                    }
+                    case Bandera b -> {
+                        buf.writeByte(7);
+                        CADENA.encode(buf, b.id());
+                        buf.writeVarInt(b.ample());
+                        buf.writeVarInt(b.alt());
+                        CADENA.encode(buf, b.accio());
+                        TEXT.encode(buf, b.ajuda());
                     }
                     case Seccio s -> {
                         buf.writeByte(6);
@@ -157,8 +174,8 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
     }
 
     private static Pantalla llegir(RegistryFriendlyByteBuf buf) {
-        Capcalera capcalera = new Capcalera(buf.readInt(), CADENA.decode(buf), TEXT.decode(buf), TEXT.decode(buf),
-                llegirPeces(buf));
+        Capcalera capcalera = new Capcalera(buf.readInt(), CADENA.decode(buf), CADENA.decode(buf), TEXT.decode(buf),
+                TEXT.decode(buf), llegirPeces(buf));
         int n = buf.readVarInt();
         List<Pestanya> pestanyes = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
@@ -191,7 +208,9 @@ public record Pantalla(Capcalera capcalera, List<Pestanya> pestanyes, String act
                 case 3 -> new Icona(CADENA.decode(buf), TEXT.decode(buf), TEXT.decode(buf));
                 case 4 -> new Barra(buf.readFloat(), buf.readInt(), buf.readInt(), TEXT.decode(buf), buf.readVarInt(),
                         TEXT.decode(buf));
-                case 5 -> new Escut(buf.readInt(), CADENA.decode(buf), TEXT.decode(buf));
+                case 5 -> new Escut(buf.readInt(), CADENA.decode(buf), CADENA.decode(buf), TEXT.decode(buf));
+                case 7 -> new Bandera(CADENA.decode(buf), buf.readVarInt(), buf.readVarInt(), CADENA.decode(buf),
+                        TEXT.decode(buf));
                 case 6 -> new Seccio(TEXT.decode(buf), CADENA.decode(buf));
                 default -> throw new IllegalArgumentException("Peça desconeguda: " + tipus);
             });

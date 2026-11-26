@@ -1,5 +1,6 @@
 package cat.mineuab.pauitreva;
 
+import cat.mineuab.pauitreva.banderes.Banderes;
 import cat.mineuab.pauitreva.guerra.Batalles;
 import cat.mineuab.pauitreva.opac.AccesGuerra;
 import cat.mineuab.pauitreva.opac.VetClaims;
@@ -45,6 +46,7 @@ public final class PauITreva {
             e.getContext().getChunkAccessOverriderManagerAPI().register(new AccesGuerra());
         });
         NeoForge.EVENT_BUS.addListener(ServerStartedEvent.class, e -> {
+            Banderes.carregar(e.getServer());
             Manteniment.engegar(e.getServer());
             Batalles.engegar(e.getServer());
         });
@@ -57,6 +59,11 @@ public final class PauITreva {
             Batalles.tick(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener(LivingDeathEvent.class, Batalles::mort);
+        NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.OnDatapackSyncEvent.class, e -> {
+            if (e.getPlayer() == null) {
+                Banderes.carregar(e.getPlayerList().getServer()); // /reload: potser hi ha banderes noves
+            }
+        });
         NeoForge.EVENT_BUS.addListener(PlayerEvent.PlayerLoggedInEvent.class, e -> {
             if (e.getEntity() instanceof ServerPlayer jugador) {
                 Batalles.entrar(jugador);

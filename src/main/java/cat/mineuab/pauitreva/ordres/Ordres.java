@@ -57,6 +57,8 @@ public final class Ordres {
 
     static final SuggestionProvider<CommandSourceStack> SIGLES = (c, b) -> SharedSuggestionProvider.suggest(
             Dades.registre(c.getSource().getServer()).paisos().stream().map(Pais::sigla), b);
+    private static final SuggestionProvider<CommandSourceStack> BANDERES = (c, b) -> SharedSuggestionProvider.suggest(
+            cat.mineuab.pauitreva.banderes.Banderes.totes().stream().map(cat.mineuab.pauitreva.banderes.Banderes.Bandera::id), b);
     private static final SuggestionProvider<CommandSourceStack> RANGS = (c, b) -> SharedSuggestionProvider.suggest(
             Arrays.stream(Rang.values()).map(Rang::clau), b);
     private static final SuggestionProvider<CommandSourceStack> PERMISOS = (c, b) -> SharedSuggestionProvider.suggest(
@@ -94,7 +96,7 @@ public final class Ordres {
                                 .executes(c -> lema(c, StringArgumentType.getString(c, "lema")))))
                 .then(Commands.literal("bandera")
                         .executes(c -> bandera(c, ""))
-                        .then(Commands.argument("bandera", StringArgumentType.greedyString())
+                        .then(Commands.argument("bandera", StringArgumentType.greedyString()).suggests(BANDERES)
                                 .executes(c -> bandera(c, StringArgumentType.getString(c, "bandera")))))
                 .then(Commands.literal("capital").executes(Ordres::capital))
                 .then(Commands.literal("rang")
@@ -388,6 +390,10 @@ public final class Ordres {
 
     private static int bandera(CommandContext<CommandSourceStack> c, String bandera) throws CommandSyntaxException {
         Jo jo = jo(c, Permis.EDITAR);
+        if (!bandera.isBlank() && !cat.mineuab.pauitreva.banderes.Banderes.existeix(bandera.trim())) {
+            throw ERROR.create("No hi ha cap bandera " + bandera.trim() + ". Tria-la a la pantalla del país (tecla N) "
+                    + "o escriu /nacio bandera i mira els suggeriments.");
+        }
         Resultat r = jo.registre.canviarBandera(jo.pais.id(), bandera);
         if (r == Resultat.NOM_INVALID) {
             throw ERROR.create("La bandera és l'id d'una pintura, com mineuab:catalunya (les del datapack "

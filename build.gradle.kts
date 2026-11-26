@@ -116,6 +116,11 @@ tasks.matching { it.name == "runProves" }.configureEach {
         if (opac.exists()) {
             opac.copyTo(dir.resolve("world/serverconfig/openpartiesandclaims-default-player-config.toml"))
         }
+        // Les banderes del Create (datapack mineuab-banderes), perquè les proves les puguin fer servir.
+        val banderes = project.file("../servidor/world/datapacks/mineuab-banderes")
+        if (banderes.exists()) {
+            banderes.copyRecursively(dir.resolve("world/datapacks/mineuab-banderes"))
+        }
         // I la config del servidor d'OPAC que Pau i Treva necessita (claims de party, PvP de guerra).
         project.file("opac/openpartiesandclaims-server.toml")
             .copyTo(dir.resolve("world/serverconfig/openpartiesandclaims-server.toml"))

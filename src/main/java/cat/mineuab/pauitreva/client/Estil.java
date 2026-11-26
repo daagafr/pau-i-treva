@@ -113,6 +113,32 @@ public final class Estil {
         }
     }
 
+    /**
+     * Una bandera sencera dins d'un marc d'or, com un quadre. {@code (x, y, w, h)} és la mida de la bandera; el
+     * marc és fora (3 unitats en gran, 1 en petit). Torna {@code false} si la bandera encara no ha arribat.
+     */
+    public static boolean bandera(GuiGraphics g, String id, int x, int y, int w, int h, boolean ressaltada) {
+        BanderesClient.Textura t = BanderesClient.textura(id);
+        if (t == null) {
+            g.fill(x - 1, y - 1, x + w + 1, y + h + 1, NEGRE);
+            g.fill(x, y, x + w, y + h, FONS_CLAR);
+            return false;
+        }
+        boolean gran = w >= 30;
+        if (gran) {
+            g.fill(x - 4, y - 4, x + w + 4, y + h + 4, NEGRE);
+            g.fill(x - 3, y - 3, x + w + 3, y + h + 3, ressaltada ? OR_CLAR : OR);
+            g.fill(x - 2, y - 2, x + w + 2, y + h + 2, OR_FOSC);
+            g.fill(x - 1, y - 1, x + w + 1, y + h + 1, NEGRE);
+        } else {
+            g.fill(x - 1, y - 1, x + w + 1, y + h + 1, ressaltada ? OR_CLAR : NEGRE);
+        }
+        g.blit(t.rl(), x, y, w, h, 0, 0, t.ample(), t.alt(), t.ample(), t.alt());
+        // Una mica de llum a dalt, com si fos roba.
+        g.fillGradient(x, y, x + w, y + Math.max(1, h / 3), 0x26FFFFFF, 0x00FFFFFF);
+        return true;
+    }
+
     /** La silueta d'un escut: rectangle a dalt i punxa a baix. */
     private static void forma(GuiGraphics g, int x, int y, int w, int h, int color) {
         int recte = h * 55 / 100;
