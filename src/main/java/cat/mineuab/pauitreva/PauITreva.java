@@ -7,6 +7,7 @@ import cat.mineuab.pauitreva.opac.VetClaims;
 import cat.mineuab.pauitreva.ordres.Ordres;
 import cat.mineuab.pauitreva.ordres.OrdresGuerra;
 import cat.mineuab.pauitreva.pantalla.Xarxa;
+import cat.mineuab.pauitreva.titols.Tags;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -48,6 +49,7 @@ public final class PauITreva {
         NeoForge.EVENT_BUS.addListener(ServerStartedEvent.class, e -> {
             Banderes.carregar(e.getServer());
             Manteniment.engegar(e.getServer());
+            Tags.engegar();
             Batalles.engegar(e.getServer());
         });
         NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, e -> {
@@ -67,11 +69,13 @@ public final class PauITreva {
         NeoForge.EVENT_BUS.addListener(PlayerEvent.PlayerLoggedInEvent.class, e -> {
             if (e.getEntity() instanceof ServerPlayer jugador) {
                 Batalles.entrar(jugador);
+                Tags.actualitzar(jugador.server, jugador);
             }
         });
         NeoForge.EVENT_BUS.addListener(PlayerEvent.PlayerLoggedOutEvent.class, e -> {
             if (e.getEntity() instanceof ServerPlayer jugador) {
                 Xarxa.sortir(jugador);
+                Tags.sortir(jugador);
             }
         });
     }

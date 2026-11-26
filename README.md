@@ -22,6 +22,9 @@ El nom ve de la Pau i Treva de Déu (Toluges, 1027): dies en què no es podia ll
 - **Avisos a pantalla amb so** (títols, barra d'acció i barra de guerra), amb paquets de Minecraft normals.
 - **Territori del país**: ordre d'admin per passar els claims dels membres al líder (claims de party d'OPAC), i quan canvia
   el líder, el territori passa al nou.
+- **Tag del país** (opcional, si hi ha LuckPerms i TAB): al Create, el xat i la llista del TAB porten `[ADMIN] UAB [CAT]
+  Dagafr [Física]` (el tag del país és un prefix de LuckPerms amb `server=create`) i damunt del cap només el país
+  (`%pauitreva-tag%` del TAB). Com es configura al servidor: [`desplegament/README.md`](desplegament/README.md).
 - **Banderes**: les pintures dels datapacks (les 70 de `mineuab-banderes`). La del país surt a la pantalla amb un marc d'or
   (si no en té, un escut del seu color amb la sigla) i es tria d'una galeria. El servidor envia les imatges al client.
 - **API JSON** de només lectura a `http://127.0.0.1:25582/estat.json`: països (membres, títols, territori, humiliació),

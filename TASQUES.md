@@ -44,7 +44,10 @@ El plantejament és a [PLANTEJAMENT.md](PLANTEJAMENT.md) i l'ús, a [README.md](
 
 ## Fase 3: títols i mapes
 
-- [ ] Títols a LuckPerms (`server=create`) i `meta-formatting` perquè el xat ensenyi rang i sigla
+- [x] Tag del país al xat i a la llista del TAB (`[ADMIN] UAB [CAT] Dagafr [Física]`, sense el càrrec) com a prefix de LuckPerms amb `server=create`, i damunt del cap només el país (placeholder `%pauitreva-tag%` del TAB). Decidit per David el 26/11; provat amb el nostre LuckPerms (`ProvesTags`)
+- [x] Al Create, la pila de prefixos de LuckPerms (rang, universitat, propi) i el color del nom dels rangs a `username-color`: posat en calent el 26/11 (vegeu `desplegament/README.md` i PENDENTS.md del servidor)
+- [ ] En desplegar el mod: `tagprefix: "%pauitreva-tag%"` al `groups.yml` del TAB del Create
+- [ ] Títols guanyats (Fundador/a, Conqueridor/a, Traïdor/a...) i quin porta cadascú
 - [ ] Pàgina `/create/nacions` a la web amb el mapa polític i el diari
 - [ ] El mateix mapa dins de la pantalla del joc
 

@@ -12,6 +12,7 @@ import cat.mineuab.pauitreva.model.TipusRelacio;
 import cat.mineuab.pauitreva.mon.Dades;
 import cat.mineuab.pauitreva.opac.PontOpac;
 import cat.mineuab.pauitreva.opac.ZonaOpac;
+import cat.mineuab.pauitreva.titols.Tags;
 import xaero.pac.common.server.parties.party.api.IServerPartyAPI;
 import cat.mineuab.pauitreva.ordres.Missatges;
 import cat.mineuab.pauitreva.web.ApiWeb;
@@ -204,6 +205,7 @@ public final class Manteniment {
                 }
             }
 
+            Tags.actualitzar(server);
             ApiWeb.actualitzar(server);
         } catch (RuntimeException e) {
             // Mai no ha de tombar el servidor: s'avisa al registre i es torna a provar la propera vegada.

@@ -16,6 +16,7 @@ import cat.mineuab.pauitreva.model.TipusRelacio;
 import cat.mineuab.pauitreva.model.Validacio;
 import cat.mineuab.pauitreva.mon.Dades;
 import cat.mineuab.pauitreva.opac.PontOpac;
+import cat.mineuab.pauitreva.titols.Tags;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -346,6 +347,7 @@ public final class Ordres {
         PontOpac.aplicarIdentitat(jo.server, p);
         Missatges.anunciar(jo.server, "S'ha fundat " + Registre.etiqueta(p) + ", amb " + jo.jugador.getGameProfile().getName()
                 + " de líder.");
+        Tags.actualitzar(jo.server);
         c.getSource().sendSuccess(() -> Missatges.bo("País fundat. Ara pots posar-li color (/nacio color #RRGGBB), "
                 + "lema, bandera i capital. Per convidar gent, fes servir les parties d'OPAC."), false);
         return 1;
@@ -365,6 +367,7 @@ public final class Ordres {
         Jo jo = jo(c, Permis.EDITAR);
         Resultat r = jo.registre.canviarSigla(jo.pais.id(), StringArgumentType.getString(c, "sigla"), ara());
         if (r.bo()) {
+            Tags.actualitzar(jo.server);
             Missatges.anunciar(jo.server, jo.registre.darrers(1).get(0).text());
         }
         return resposta(c, r);
@@ -378,6 +381,7 @@ public final class Ordres {
         }
         Resultat r = jo.registre.canviarColor(jo.pais.id(), color.getAsInt());
         if (r.bo()) {
+            Tags.actualitzar(jo.server);
             PontOpac.aplicarIdentitat(jo.server, jo.pais);
         }
         return resposta(c, r);
@@ -447,6 +451,7 @@ public final class Ordres {
         }
         Resultat r = jo.registre.dissoldre(jo.pais.id(), "", ara());
         if (r.bo()) {
+            Tags.actualitzar(jo.server);
             Missatges.anunciar(jo.server, jo.registre.darrers(1).get(0).text());
         }
         c.getSource().sendSuccess(() -> Missatges.gris("La party d'OPAC i els claims es queden com estaven."), false);

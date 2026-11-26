@@ -26,7 +26,8 @@ val gametest: SourceSet = sourceSets.create("gametest") {
 configurations[gametest.compileOnlyConfigurationName].extendsFrom(configurations.compileOnly.get())
 
 repositories {
-    // Mods de Modrinth (Open Parties and Claims). Només aquest grup, perquè cap altra dependència en surti.
+    mavenCentral() // l'API de LuckPerms
+    // Mods de Modrinth (Open Parties and Claims, TAB). Només aquest grup, perquè cap altra dependència en surti.
     exclusiveContent {
         forRepository {
             maven("https://api.modrinth.com/maven") { name = "Modrinth" }
@@ -76,7 +77,12 @@ dependencies {
     // Open Parties and Claims 0.33.0 per a NeoForge 1.21.1 (id de versió de Modrinth, el mateix que a mods-lock.json).
     // Només per compilar: al servidor ja hi és.
     compileOnly("maven.modrinth:open-parties-and-claims:yWmXD7GW")
-    // Per a les GameTests, OPAC ha de ser-hi de veritat.
+    // Opcionals: si hi són, el tag del país surt al xat (LuckPerms) i damunt del cap (TAB).
+    compileOnly("net.luckperms:api:5.4")
+    compileOnly("maven.modrinth:tab-was-taken:7TrBCyBl") // TAB 5.5.0, el del Create
+    // Per a les GameTests, OPAC ha de ser-hi de veritat, i el LuckPerms del Create (amb la seva pila de prefixos).
+    "gametestRuntimeOnly"(files("../luckperms/LuckPerms-NeoForge-5.4.140-mineuab.jar"))
+    "gametestCompileOnly"("net.luckperms:api:5.4")
     "gametestRuntimeOnly"("maven.modrinth:open-parties-and-claims:yWmXD7GW")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
@@ -121,6 +127,13 @@ tasks.matching { it.name == "runProves" }.configureEach {
         if (banderes.exists()) {
             banderes.copyRecursively(dir.resolve("world/datapacks/mineuab-banderes"))
         }
+        // LuckPerms com al Create (server = create) amb la pila de prefixos de desplegament/, i H2 en lloc de MariaDB.
+        val lp = dir.resolve("config/luckperms")
+        lp.mkdirs()
+        lp.resolve("luckperms.conf").writeText(
+            "server = \"create\"\nstorage-method = \"h2\"\nmessaging-service = \"none\"\n" +
+                project.file("desplegament/luckperms-meta-formatting.conf").readText()
+        )
         // I la config del servidor d'OPAC que Pau i Treva necessita (claims de party, PvP de guerra).
         project.file("opac/openpartiesandclaims-server.toml")
             .copyTo(dir.resolve("world/serverconfig/openpartiesandclaims-server.toml"))

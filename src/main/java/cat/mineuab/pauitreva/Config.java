@@ -32,6 +32,35 @@ public final class Config {
             .comment("Port de l'API web. Credits fa servir el 25580 i Perfil el 25581.")
             .defineInRange("apiPort", 25582, 1024, 65535);
 
+    // ---------------------------------------------------------------- Tags
+
+    static {
+        B.comment("El tag del país al xat (prefix de LuckPerms, si hi és) i damunt del cap (placeholder %pauitreva-tag%",
+                "del TAB, si hi és).").push("tags");
+    }
+
+    public static final ModConfigSpec.BooleanValue TAG_LUCKPERMS = B
+            .comment("Posar el tag del país com a prefix de LuckPerms (per al xat i la llista del TAB).")
+            .define("luckperms", true);
+
+    public static final ModConfigSpec.ConfigValue<String> TAG_FORMAT = B
+            .comment("El tag. %color% és el color del país en hexadecimal (RRGGBB) i %sigla%, la sigla.")
+            .define("format", "#%color%&l[%sigla%]&r ");
+
+    public static final ModConfigSpec.IntValue TAG_PRIORITAT = B
+            .comment("Prioritat del prefix a LuckPerms. Ha de ser més baixa que la de les universitats (9) i que cap",
+                    "altre prefix que facin servir els jugadors: els prefixos d'aquesta prioritat amb només el context",
+                    "server=<servidor> són del mod.")
+            .defineInRange("prioritat", 5, 1, 1000);
+
+    public static final ModConfigSpec.ConfigValue<String> TAG_SERVIDOR = B
+            .comment("El context server= del prefix: el nom del servidor a la config de LuckPerms. Al MineUAB no hi surt.")
+            .define("servidor", "create");
+
+    static {
+        B.pop();
+    }
+
     // ---------------------------------------------------------------- Guerra
 
     static {

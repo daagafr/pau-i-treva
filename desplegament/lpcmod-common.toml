@@ -1,0 +1,4 @@
+# config/lpcmod-common.toml del Create. Abans: "%prefix%%username%%suffix%: %chatmessage%".
+# El color del nom ja no surt del final del prefix (ara el darrer és el del país): surt de la meta username-color
+# dels grups de staff (vegeu README.md).
+chatFormat = "%prefix%%username-color%%username%%suffix%: %chatmessage%"
