@@ -14,6 +14,10 @@ public enum Permis {
     DIPLOMACIA("diplomacia", Rang.MINISTRE),
     /** Trencar una aliança o un pacte abans d'hora. */
     TRENCAR("trencar", Rang.LIDER),
+    /** Declarar la guerra i triar-ne l'objectiu. */
+    GUERRA("guerra", Rang.LIDER),
+    /** Proposar, acceptar i imposar la pau, i rendir-se. */
+    PAU("pau", Rang.LIDER),
     /** Dissoldre el país. Només el líder. */
     DISSOLDRE("dissoldre", Rang.LIDER);
 

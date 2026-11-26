@@ -450,6 +450,21 @@ public final class Registre {
 
     // ---------------------------------------------------------------- Guerra
 
+    /** Quants punts de captura té cada bàndol en un chunk ara mateix. */
+    public record Presencia(Chunk chunk, int delAtacant, int delDefensor) {
+    }
+
+    /** Un punt de captura que ha canviat de mans del tot. */
+    public record CanviControl(UUID guerra, Chunk chunk, UUID quiPren, boolean capturat) {
+    }
+
+    /** Quins chunks de l'objectiu entren en uns termes de pau. */
+    public enum QuinsChunks {
+        CAP,
+        CONTROLATS,
+        OBJECTIU
+    }
+
     public Collection<Guerra> guerres() {
         return Collections.unmodifiableCollection(guerres.values());
     }
@@ -470,15 +485,27 @@ public final class Registre {
         return Optional.ofNullable(propostesPau.get(guerra));
     }
 
-    /**
-     * Declara la guerra. Qui crida ha de comprovar abans, a OPAC, que els chunks d'una conquesta són del
-     * defensor (i, si cal, que toquen la frontera de l'atacant).
-     *
-     * @param chunks      per a una conquesta, de 1 a {@code maxChunks} chunks; per als altres objectius, cap
-     * @param preparacio  quant temps passa fins que es pot lluitar
-     */
+    /** Com {@link #declararGuerra(UUID, UUID, TipusObjectiu, java.util.Set, long, ParametresGuerra, Chunk, Chunk)}, sense capitals. */
     public Resultat declararGuerra(UUID atacant, UUID defensor, TipusObjectiu objectiu, java.util.Set<Chunk> chunks,
                                    long ara, long preparacio, int maxChunks) {
+        ParametresGuerra d = ParametresGuerra.perDefecte();
+        ParametresGuerra p = new ParametresGuerra(preparacio, d.treva(), d.durada(), d.humiliacio(), maxChunks, 100,
+                d.calFrontera(), Integer.MAX_VALUE, d.capturaBase(), d.capturaExtra(), d.capturaMax(), d.pesDefensor(),
+                d.decadencia(), d.factorCapital(), d.ocupacioPerHora(), d.capitalPerHora(), d.defensaPerHora(),
+                d.puntsBaixa(), d.baixesMaxVictima(), d.vides());
+        return declararGuerra(atacant, defensor, objectiu, chunks, ara, p, null, null);
+    }
+
+    /**
+     * Declara la guerra. Qui crida ha de comprovar abans, a OPAC, que els chunks d'una conquesta són del
+     * defensor (amb {@link Territori#validar}); aquí només es mira que no en siguin més de {@code p.maxChunks()}.
+     *
+     * @param chunks          per a una conquesta, els chunks de l'objectiu; per als altres objectius, cap
+     * @param capitalAtacant  la capital de l'atacant durant la guerra (la pot prendre el defensor), o {@code null}
+     * @param capitalDefensor la capital del defensor durant la guerra (la pot prendre l'atacant), o {@code null}
+     */
+    public Resultat declararGuerra(UUID atacant, UUID defensor, TipusObjectiu objectiu, java.util.Set<Chunk> chunks,
+                                   long ara, ParametresGuerra p, Chunk capitalAtacant, Chunk capitalDefensor) {
         if (atacant.equals(defensor)) {
             return Resultat.MATEIX_PAIS;
         }
@@ -504,10 +531,15 @@ public final class Registre {
             }
         }
         boolean conquesta = objectiu == TipusObjectiu.CONQUESTA;
-        if (conquesta ? chunks.isEmpty() || chunks.size() > maxChunks : !chunks.isEmpty()) {
+        if (conquesta ? chunks.isEmpty() || chunks.size() > p.maxChunks() : !chunks.isEmpty()) {
             return Resultat.OBJECTIU_INVALID;
         }
-        Guerra g = new Guerra(UUID.randomUUID(), atacant, defensor, objectiu, chunks, ara, ara + preparacio, 0);
+        if (guerresDe(atacant).size() >= p.guerresMax() || guerresDe(defensor).size() >= p.guerresMax()) {
+            return Resultat.MASSA_GUERRES;
+        }
+        long inici = ara + p.preparacio();
+        Guerra g = new Guerra(UUID.randomUUID(), atacant, defensor, objectiu, chunks, ara, inici,
+                p.durada() > 0 ? inici + p.durada() : 0, capitalAtacant, capitalDefensor, 0);
         guerres.put(g.id(), g);
         Parella parella = Parella.de(atacant, defensor);
         relacions.put(parella, new EstatRelacio(TipusRelacio.GUERRA, ara, 0));
@@ -515,7 +547,7 @@ public final class Registre {
         String perque = conquesta
                 ? "per conquerir " + chunks.size() + (chunks.size() == 1 ? " chunk" : " chunks")
                 : "per " + objectiu.nom();
-        long hores = Math.round(preparacio / (double) HORA);
+        long hores = Math.round(p.preparacio() / (double) HORA);
         apuntar(ara, Esdeveniment.GUERRA, etiqueta(a) + " declara la guerra a " + etiqueta(d) + " " + perque
                 + ". Es podrà lluitar d'aquí a " + hores + (hores == 1 ? " hora." : " hores."));
         canvi();
@@ -531,12 +563,166 @@ public final class Registre {
         if (!g.hiEs(perAquest)) {
             return Resultat.TIPUS_INVALID;
         }
-        int abans = g.punts();
+        int abans = g.milpunts();
         g.sumar(perAquest, punts);
-        if (g.punts() != abans) {
+        if (g.milpunts() != abans) {
             canvi();
         }
         return Resultat.FET;
+    }
+
+    /**
+     * Un segon (o uns quants) de batalla: mou el control de cada punt de captura segons qui hi ha. Només s'ha de
+     * cridar amb la finestra oberta i la guerra activa.
+     *
+     * @param presencies qui hi ha a cada punt de captura (els que no hi surten, buits)
+     * @return els punts que han canviat de mans del tot, per avisar els jugadors
+     */
+    public List<CanviControl> capturar(UUID guerra, Collection<Presencia> presencies, int segons, ParametresGuerra p) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return List.of();
+        }
+        Map<Chunk, Presencia> per = new HashMap<>();
+        for (Presencia pr : presencies) {
+            per.put(pr.chunk(), pr);
+        }
+        java.util.Set<Chunk> punts = new java.util.LinkedHashSet<>(g.chunks());
+        if (g.capitalDefensor() != null) {
+            punts.add(g.capitalDefensor());
+        }
+        if (g.capitalAtacant() != null) {
+            punts.add(g.capitalAtacant());
+        }
+        List<CanviControl> canvis = new ArrayList<>();
+        boolean canviat = false;
+        for (Chunk c : punts) {
+            Presencia pr = per.getOrDefault(c, new Presencia(c, 0, 0));
+            UUID quiPren = g.quiPren(c);
+            boolean prenAtacant = quiPren.equals(g.atacant());
+            int prenen = prenAtacant ? pr.delAtacant() : pr.delDefensor();
+            int defensen = prenAtacant ? pr.delDefensor() : pr.delAtacant();
+            boolean capital = !g.chunks().contains(c);
+            int abans = g.controlDe(c);
+            int delta = p.deltaCaptura(prenen, defensen, capital);
+            if (prenen == 0 && defensen == 0 && abans > 0 && abans < Guerra.CONTROL_MAX) {
+                delta = -p.decadencia();
+            }
+            if (delta == 0) {
+                continue;
+            }
+            int despres = g.moureControl(c, delta * segons);
+            if (despres != abans) {
+                canviat = true;
+            }
+            if (abans < Guerra.CONTROL_MAX && despres >= Guerra.CONTROL_MAX) {
+                canvis.add(new CanviControl(guerra, c, quiPren, true));
+            } else if (abans >= Guerra.CONTROL_MAX && despres < Guerra.CONTROL_MAX) {
+                canvis.add(new CanviControl(guerra, c, quiPren, false));
+            }
+        }
+        if (canviat) {
+            canvi();
+        }
+        return canvis;
+    }
+
+    /**
+     * Un minut de finestra oberta amb la guerra activa: l'atacant guanya punts per l'objectiu que controla, cada
+     * bàndol per la capital enemiga que té, i el defensor guanya una mica si l'atacant no controla res.
+     */
+    public void puntuarMinut(UUID guerra, ParametresGuerra p) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return;
+        }
+        int abans = g.milpunts();
+        if (!g.chunks().isEmpty()) {
+            long suma = 0;
+            for (int v : g.controls().values()) {
+                suma += v;
+            }
+            double mil = p.ocupacioPerHora() * (double) Guerra.MIL * suma / (60.0 * g.chunks().size() * Guerra.CONTROL_MAX);
+            g.sumarMil(g.atacant(), (int) Math.round(mil));
+        }
+        int capitalMinut = perMinut(p.capitalPerHora());
+        boolean capitalDefensorPresa = g.capitalDefensor() != null && !g.chunks().contains(g.capitalDefensor())
+                && g.controlCapitalDefensor() >= Guerra.CONTROL_MAX;
+        if (capitalDefensorPresa) {
+            g.sumarMil(g.atacant(), capitalMinut);
+        }
+        if (g.capitalAtacant() != null && g.controlCapitalAtacant() >= Guerra.CONTROL_MAX) {
+            g.sumarMil(g.defensor(), capitalMinut);
+        }
+        if (g.controlats().isEmpty() && !capitalDefensorPresa) {
+            g.sumarMil(g.defensor(), perMinut(p.defensaPerHora()));
+        }
+        if (g.milpunts() != abans) {
+            canvi();
+        }
+    }
+
+    /** Mil·lèsimes de punt per minut, per a uns punts per hora (arrodonit). */
+    static int perMinut(int puntsPerHora) {
+        return (int) Math.round(puntsPerHora * (double) Guerra.MIL / 60);
+    }
+
+    /**
+     * Un jugador del país {@code paisAssassi} ha matat {@code victima}, que és del país enemic, amb la finestra
+     * oberta. Compta per a les vides de la víctima i, si no ha mort massa vegades a mans de l'enemic en
+     * aquesta finestra, dona punts.
+     *
+     * @return si la baixa ha donat punts
+     */
+    public boolean baixa(UUID guerra, UUID paisAssassi, UUID victima, ParametresGuerra p) {
+        Guerra g = guerres.get(guerra);
+        if (g == null || !g.hiEs(paisAssassi)) {
+            return false;
+        }
+        g.mort(victima);
+        g.comptarBaixa(paisAssassi);
+        boolean compta = g.baixaDe(victima) <= p.baixesMaxVictima();
+        if (compta) {
+            g.sumar(paisAssassi, p.puntsBaixa());
+        }
+        canvi();
+        return compta;
+    }
+
+    /** Un jugador d'aquesta guerra ha mort sense que el mati l'enemic (caiguda, lava...): perd una vida. */
+    public void mort(UUID guerra, UUID jugador) {
+        Guerra g = guerres.get(guerra);
+        if (g != null) {
+            g.mort(jugador);
+        }
+    }
+
+    /** Si el jugador encara pot capturar en aquesta finestra (no ha gastat totes les vides). */
+    public boolean potCapturar(UUID guerra, UUID jugador, ParametresGuerra p) {
+        Guerra g = guerres.get(guerra);
+        return g != null && g.mortsDe(jugador) < p.vides();
+    }
+
+    /** S'obre una finestra nova: tothom torna a tenir totes les vides. */
+    public void novaFinestra() {
+        guerres.values().forEach(Guerra::novaFinestra);
+    }
+
+    /**
+     * Els termes d'una pau a favor de {@code guanyador}. Els chunks només els pot guanyar l'atacant; si qui guanya
+     * és el defensor, {@code quins} no compta.
+     */
+    public static Termes termes(Guerra g, UUID guanyador, QuinsChunks quins, boolean humiliacio) {
+        java.util.Set<Chunk> chunks = new java.util.LinkedHashSet<>();
+        if (guanyador.equals(g.atacant())) {
+            switch (quins) {
+                case OBJECTIU -> chunks.addAll(g.chunks());
+                case CONTROLATS -> chunks.addAll(g.controlats());
+                case CAP -> {
+                }
+            }
+        }
+        return new Termes(chunks, humiliacio);
     }
 
     /**
@@ -560,6 +746,19 @@ public final class Registre {
         return Resultat.PAU_PROPOSADA;
     }
 
+    /** Treu la proposta de pau d'una guerra, si n'hi ha (la rebutja l'altre bàndol o la retira qui l'ha feta). */
+    public Resultat retirarPau(UUID qui, UUID guerra) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        if (!g.hiEs(qui) || propostesPau.remove(guerra) == null) {
+            return Resultat.NO_HI_HA_PROPOSTA;
+        }
+        canvi();
+        return Resultat.FET;
+    }
+
     /**
      * L'altre bàndol accepta la pau proposada.
      *
@@ -568,6 +767,10 @@ public final class Registre {
      *               abans que l'altre faci clic a «Accepta».
      */
     public Resultat acceptarPau(UUID qui, UUID guerra, long creada, long ara, long treva) {
+        return acceptarPau(qui, guerra, creada, ara, treva, ParametresGuerra.perDefecte().humiliacio());
+    }
+
+    public Resultat acceptarPau(UUID qui, UUID guerra, long creada, long ara, long treva, long humiliacio) {
         Guerra g = guerres.get(guerra);
         PropostaPau pr = propostesPau.get(guerra);
         if (g == null) {
@@ -576,11 +779,18 @@ public final class Registre {
         if (pr == null || !g.hiEs(qui) || pr.de().equals(qui) || pr.creada() != creada) {
             return Resultat.NO_HI_HA_PROPOSTA;
         }
-        return ferPau(guerra, pr.guanyador(), pr.termes(), false, ara, treva);
+        return ferPau(guerra, pr.guanyador(), pr.termes(), false, ara, treva, humiliacio);
     }
 
-    /** Qui es rendeix dona a l'enemic tot l'objectiu de la guerra (si l'enemic és l'atacant) o una pau blanca. */
+    /**
+     * Qui es rendeix perd: si és el defensor, dona a l'atacant tot l'objectiu (i la humiliació, si era l'objectiu);
+     * si és l'atacant, queda humiliat.
+     */
     public Resultat rendir(UUID qui, UUID guerra, long ara, long treva) {
+        return rendir(qui, guerra, ara, treva, ParametresGuerra.perDefecte().humiliacio());
+    }
+
+    public Resultat rendir(UUID qui, UUID guerra, long ara, long treva, long humiliacio) {
         Guerra g = guerres.get(guerra);
         if (g == null) {
             return Resultat.NO_HI_HA_GUERRA;
@@ -592,17 +802,67 @@ public final class Registre {
         Termes termes = guanyador.equals(g.atacant())
                 ? new Termes(g.chunks(), g.objectiu() == TipusObjectiu.HUMILIACIO)
                 : new Termes(java.util.Set.of(), true);
-        return ferPau(guerra, guanyador, termes, false, ara, treva);
+        return ferPau(guerra, guanyador, termes, false, ara, treva, humiliacio);
     }
 
     /**
-     * Signa la pau i acaba la guerra: treu la guerra, posa una treva de {@code treva} mil·lisegons i ho apunta
-     * al diari. Els chunks dels termes els ha de passar a OPAC qui crida (del líder del defensor al del
-     * guanyador).
+     * Acaba una guerra que ha arribat al límit: guanya qui té més punts i s'emporta el que pot pagar amb ells.
+     * L'atacant, els chunks que controla del tot (els que pugui pagar, primer els més controlats) i la humiliació
+     * si era l'objectiu; el defensor, la humiliació de l'atacant. Si ningú no pot pagar res, pau blanca.
+     */
+    public Resultat pauAutomatica(UUID guerra, long ara, ParametresGuerra p) {
+        Guerra g = guerres.get(guerra);
+        if (g == null) {
+            return Resultat.NO_HI_HA_GUERRA;
+        }
+        Termes termes = termesAutomatics(g);
+        UUID guanyador = g.punts() >= 0 ? g.atacant() : g.defensor();
+        apuntar(ara, Esdeveniment.LIMIT, "La guerra entre " + etiquetaDe(g.atacant()) + " i " + etiquetaDe(g.defensor())
+                + " ha arribat al límit de temps.");
+        return ferPau(guerra, guanyador, termes, false, ara, p.treva(), p.humiliacio());
+    }
+
+    /** Els termes de la pau automàtica (vegeu {@link #pauAutomatica}). */
+    public static Termes termesAutomatics(Guerra g) {
+        int punts = g.punts();
+        if (punts > 0) {
+            boolean humilia = g.objectiu() == TipusObjectiu.HUMILIACIO && punts >= Termes.COST_HUMILIACIO;
+            int resten = punts - (humilia ? Termes.COST_HUMILIACIO : 0);
+            java.util.Set<Chunk> chunks = new java.util.LinkedHashSet<>();
+            for (Chunk c : g.controlats()) {
+                java.util.Set<Chunk> prova = new java.util.LinkedHashSet<>(chunks);
+                prova.add(c);
+                if (new Termes(prova, false).cost(g) > resten) {
+                    break;
+                }
+                chunks = prova;
+            }
+            return new Termes(chunks, humilia);
+        }
+        if (punts < 0 && -punts >= Termes.COST_HUMILIACIO) {
+            return new Termes(java.util.Set.of(), true);
+        }
+        return Termes.blanca();
+    }
+
+    /** Les guerres que ja han arribat al límit de temps. */
+    public List<Guerra> guerresAlLimit(long ara) {
+        return guerres.values().stream().filter(g -> g.limit() > 0 && ara >= g.limit()).toList();
+    }
+
+    public Resultat ferPau(UUID guerra, UUID guanyador, Termes termes, boolean imposada, long ara, long treva) {
+        return ferPau(guerra, guanyador, termes, imposada, ara, treva, ParametresGuerra.perDefecte().humiliacio());
+    }
+
+    /**
+     * Signa la pau i acaba la guerra: treu la guerra, posa una treva de {@code treva} mil·lisegons, humilia el
+     * perdedor si ho diuen els termes i ho apunta al diari. Els chunks dels termes els ha de passar a OPAC qui
+     * crida (abans, perquè un cop signada la guerra ja no hi és).
      *
      * @param imposada si és {@code true}, el guanyador ha de tenir prou punts per pagar els termes
      */
-    public Resultat ferPau(UUID guerra, UUID guanyador, Termes termes, boolean imposada, long ara, long treva) {
+    public Resultat ferPau(UUID guerra, UUID guanyador, Termes termes, boolean imposada, long ara, long treva,
+                           long humiliacio) {
         Guerra g = guerres.get(guerra);
         if (g == null) {
             return Resultat.NO_HI_HA_GUERRA;
@@ -620,9 +880,12 @@ public final class Registre {
         guerres.remove(guerra);
         propostesPau.remove(guerra);
         relacions.put(Parella.de(g.atacant(), g.defensor()), new EstatRelacio(TipusRelacio.TREVA, ara, ara + treva));
-        String guanya = paisos.containsKey(guanyador) ? etiqueta(paisos.get(guanyador)) : "?";
+        String guanya = etiquetaDe(guanyador);
         UUID perdedor = g.enemic(guanyador);
-        String perd = paisos.containsKey(perdedor) ? etiqueta(paisos.get(perdedor)) : "?";
+        String perd = etiquetaDe(perdedor);
+        if (termes.humiliacio() && paisos.containsKey(perdedor)) {
+            paisos.get(perdedor).posarHumiliatFins(ara + humiliacio);
+        }
         String text;
         if (termes.esBlanca()) {
             text = "Pau blanca entre " + guanya + " i " + perd + ".";
@@ -649,6 +912,11 @@ public final class Registre {
             return Resultat.OBJECTIU_INVALID;
         }
         return null;
+    }
+
+    private String etiquetaDe(UUID id) {
+        Pais p = paisos.get(id);
+        return p == null ? "?" : etiqueta(p);
     }
 
     // ---------------------------------------------------------------- Càrrega de les dades desades
@@ -699,5 +967,10 @@ public final class Registre {
         p.posarCapital(capital);
         nomsRangs.forEach(p::posarNomRang);
         permisos.forEach(p::posarPermis);
+    }
+
+    /** Per carregar les dades del món. */
+    public static void carregarHumiliacio(Pais p, long fins) {
+        p.posarHumiliatFins(fins);
     }
 }

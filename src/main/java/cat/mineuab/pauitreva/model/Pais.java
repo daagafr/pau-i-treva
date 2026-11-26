@@ -22,6 +22,7 @@ public final class Pais {
     private String lema = "";
     private String bandera = "";
     private Capital capital;
+    private long humiliatFins;
     private final EnumMap<Rang, String> nomsRangs = new EnumMap<>(Rang.class);
     private final EnumMap<Permis, Rang> permisos = new EnumMap<>(Permis.class);
 
@@ -64,6 +65,15 @@ public final class Pais {
     /** Pot ser {@code null}. */
     public Capital capital() {
         return capital;
+    }
+
+    /** Fins quan queda humiliat per una guerra perduda (0 si mai no ho ha estat). */
+    public long humiliatFins() {
+        return humiliatFins;
+    }
+
+    public boolean humiliat(long ara) {
+        return ara < humiliatFins;
     }
 
     /** El nom que el país dona a aquest rang, o el de per defecte. */
@@ -111,6 +121,10 @@ public final class Pais {
 
     void posarBandera(String bandera) {
         this.bandera = bandera;
+    }
+
+    void posarHumiliatFins(long fins) {
+        this.humiliatFins = Math.max(this.humiliatFins, fins);
     }
 
     void posarCapital(Capital capital) {

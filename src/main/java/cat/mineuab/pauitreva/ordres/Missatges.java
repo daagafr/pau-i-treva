@@ -88,6 +88,7 @@ public final class Missatges {
             case ALIATS -> "Sou aliats: per declarar-los la guerra, primer cal trencar l'aliança.";
             case EN_PACTE -> "Teniu un pacte de no agressió: trencar-lo abans d'hora queda al diari.";
             case OBJECTIU_INVALID -> "L'objectiu de la guerra no val.";
+            case MASSA_GUERRES -> "Un dels dos països ja té massa guerres obertes.";
             case NO_HI_HA_GUERRA -> "Aquesta guerra no existeix (o ja s'ha acabat).";
             case PUNTS_INSUFICIENTS -> "No teniu prou punts de guerra per imposar aquests termes.";
             case JA_EXISTEIX -> "Aquesta party ja és un país.";
