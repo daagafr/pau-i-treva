@@ -60,6 +60,15 @@ neoForge {
             systemProperty("neoforge.enableGameTest", "true")
             systemProperty("neoforge.enabledGameTestNamespaces", "pauitreva")
         }
+        // Un client sense ningú davant (amb DISPLAY a una pantalla virtual) que obre la pantalla del país i en
+        // fa captures a build/proves-client/screenshots (vegeu ProvaPantalla). Cal un món «prova» a saves/.
+        create("provaClient") {
+            client()
+            sourceSet = gametest
+            gameDirectory = project.file("build/proves-client")
+            programArguments.addAll("--quickPlaySingleplayer", "prova", "--username", "Dagafr")
+            systemProperty("pauitreva.provaClient", "true")
+        }
     }
 }
 

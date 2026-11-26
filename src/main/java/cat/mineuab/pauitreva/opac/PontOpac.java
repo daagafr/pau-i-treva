@@ -192,6 +192,12 @@ public final class PontOpac {
      * @return {chunks, chunks forçats}
      */
     public static int[] traspassarClaims(MinecraftServer server, UUID de, UUID a, boolean prova) {
+        return traspassarClaims(server, de, a, prova, null);
+    }
+
+    /** Com l'altre, però només els chunks de {@code nomes} (si no és {@code null}). */
+    public static int[] traspassarClaims(MinecraftServer server, UUID de, UUID a, boolean prova,
+                                         Set<cat.mineuab.pauitreva.model.Chunk> nomes) {
         IServerClaimsManagerAPI claims = api(server).getServerClaimsManager();
         if (de.equals(a) || !claims.hasPlayerInfo(de)) {
             return new int[] {0, 0};
@@ -201,7 +207,11 @@ public final class PontOpac {
         List<Claim> llista = new ArrayList<>();
         claims.getPlayerInfo(de).getStream().forEach(dim -> dim.getValue().getStream().forEach(posicions -> {
             boolean forcat = posicions.getClaimState().isForceloadable();
-            posicions.getStream().forEach(c -> llista.add(new Claim(dim.getKey(), c.x, c.z, forcat)));
+            posicions.getStream().forEach(c -> {
+                if (nomes == null || nomes.contains(new cat.mineuab.pauitreva.model.Chunk(dim.getKey().toString(), c.x, c.z))) {
+                    llista.add(new Claim(dim.getKey(), c.x, c.z, forcat));
+                }
+            });
         }));
         int forcats = 0;
         for (Claim c : llista) {
@@ -213,6 +223,17 @@ public final class PontOpac {
             }
         }
         return new int[] {llista.size(), forcats};
+    }
+
+    /** Els chunks que té reclamats un jugador (amb claims de party, el líder: el territori del país). */
+    public static Set<cat.mineuab.pauitreva.model.Chunk> chunksDe(MinecraftServer server, UUID jugador) {
+        IServerClaimsManagerAPI claims = api(server).getServerClaimsManager();
+        Set<cat.mineuab.pauitreva.model.Chunk> r = new HashSet<>();
+        if (claims.hasPlayerInfo(jugador)) {
+            claims.getPlayerInfo(jugador).getStream().forEach(dim -> dim.getValue().getStream().forEach(posicions ->
+                    posicions.getStream().forEach(c -> r.add(new cat.mineuab.pauitreva.model.Chunk(dim.getKey().toString(), c.x, c.z)))));
+        }
+        return r;
     }
 
     /** Treu el nom i el color del país dels claims i de la party d'un jugador que ja no n'és el líder. */

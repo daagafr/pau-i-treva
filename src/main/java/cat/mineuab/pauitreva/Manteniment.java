@@ -18,7 +18,9 @@ import cat.mineuab.pauitreva.web.ApiWeb;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import cat.mineuab.pauitreva.model.Chunk;
 import net.minecraft.server.MinecraftServer;
 
 /**
@@ -37,6 +39,13 @@ public final class Manteniment {
     private static boolean engegat;
     private static long ticks;
     private static final Map<UUID, Integer> absencies = new HashMap<>();
+    /**
+     * Per a cada país, el líder i el seu territori a l'última mirada (cada 5 s). Si el líder canvia, només
+     * es passen al nou els chunks d'aquesta foto: així, si el vell ja té una altra party, els seus claims nous
+     * no s'hi barregen.
+     */
+    private static final Map<UUID, UUID> liderVist = new HashMap<>();
+    private static final Map<UUID, Set<Chunk>> territoriVist = new HashMap<>();
 
     private Manteniment() {
     }
@@ -46,6 +55,8 @@ public final class Manteniment {
         engegat = true;
         ticks = 0;
         absencies.clear();
+        liderVist.clear();
+        territoriVist.clear();
         boolean api;
         int port;
         try {
@@ -78,6 +89,8 @@ public final class Manteniment {
         }
         if (++ticks % (segons * 20L) == 0) {
             fer(server);
+        } else if (ticks % 100 == 0) {
+            mirarLiders(server);
         }
     }
 
@@ -86,14 +99,34 @@ public final class Manteniment {
      * de la config del líder vell i, amb claims de party, li passa tots els chunks al nou, perquè el territori
      * continuï sent del país. Els chunks en disputa tornen a la zona de guerra del nou amo.
      */
+    /** Cada 5 s: els canvis de líder, i la foto del territori de cada líder. */
+    public static void mirarLiders(MinecraftServer server) {
+        try {
+            Registre r = Dades.registre(server);
+            long ara = System.currentTimeMillis();
+            for (Pais p : List.copyOf(r.paisos())) {
+                if (PontOpac.partit(server, p.id()) != null) {
+                    canviDeLider(server, r, p, ara);
+                }
+            }
+        } catch (RuntimeException e) {
+            PauITreva.LOG.error("Pau i Treva: error mirant els líders", e);
+        }
+    }
+
     private static void canviDeLider(MinecraftServer server, Registre r, Pais p, long ara) {
         IServerPartyAPI partit = PontOpac.partit(server, p.id());
         UUID nou = partit.getOwner().getUUID();
         UUID vell = p.lider();
         if (vell != null && !vell.equals(nou)) {
             PontOpac.treureIdentitat(server, vell, p);
-            if (PontOpac.claimsDePartit()) {
-                int[] n = PontOpac.traspassarClaims(server, vell, nou, false);
+            // Només el territori que tenia el vell quan era el líder d'aquest país. Sense foto (just després
+            // d'arrencar), tot, però només si el vell no és a cap altra party.
+            Set<Chunk> foto = vell.equals(liderVist.get(p.id())) ? territoriVist.get(p.id()) : null;
+            IServerPartyAPI deVell = PontOpac.partitDe(server, vell);
+            boolean enUnaAltra = deVell != null && !deVell.getId().equals(p.id());
+            if (PontOpac.claimsDePartit() && (foto != null || !enUnaAltra)) {
+                int[] n = PontOpac.traspassarClaims(server, vell, nou, false, foto);
                 PauITreva.LOG.info("Pau i Treva: {} canvia de líder; {} chunks ({} forçats) passen al nou",
                         Registre.etiqueta(p), n[0], n[1]);
                 for (Guerra g : r.guerresDe(p.id())) {
@@ -108,6 +141,8 @@ public final class Manteniment {
             Missatges.anunciar(server, r.darrers(1).get(0).text());
         }
         r.posarLider(p.id(), nou);
+        liderVist.put(p.id(), nou);
+        territoriVist.put(p.id(), PontOpac.chunksDe(server, nou));
     }
 
     public static void fer(MinecraftServer server) {

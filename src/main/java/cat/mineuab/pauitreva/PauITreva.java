@@ -4,6 +4,7 @@ import cat.mineuab.pauitreva.guerra.Batalles;
 import cat.mineuab.pauitreva.opac.VetClaims;
 import cat.mineuab.pauitreva.ordres.Ordres;
 import cat.mineuab.pauitreva.ordres.OrdresGuerra;
+import cat.mineuab.pauitreva.pantalla.Xarxa;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
@@ -17,13 +18,14 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.slf4j.Logger;
 import xaero.pac.common.event.api.v2.OPACServerAddonRegisterEvent;
 
 /**
- * Punt d'entrada del mod. De moment tot és de servidor (ordres, dades, guerra i avisos amb paquets de
- * Minecraft normals): el jar no registra cap paquet de xarxa propi, i per tant es pot posar només al servidor
- * sense que els jugadors l'hagin de tenir.
+ * Punt d'entrada del mod. Gairebé tot és de servidor (ordres, dades, guerra i avisos amb paquets de Minecraft
+ * normals). La pantalla del país (tecla N) fa servir dos paquets propis <b>opcionals</b>: qui no té el mod pot
+ * entrar igualment al servidor i fer servir les ordres.
  */
 @Mod(PauITreva.ID)
 public final class PauITreva {
@@ -32,6 +34,7 @@ public final class PauITreva {
 
     public PauITreva(IEventBus busDelMod, ModContainer contenidor) {
         contenidor.registerConfig(ModConfig.Type.SERVER, Config.SPEC);
+        busDelMod.addListener(RegisterPayloadHandlersEvent.class, Xarxa::registrar);
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, e -> {
             Ordres.registrar(e.getDispatcher());
             OrdresGuerra.registrar(e.getDispatcher());
@@ -54,6 +57,11 @@ public final class PauITreva {
         NeoForge.EVENT_BUS.addListener(PlayerEvent.PlayerLoggedInEvent.class, e -> {
             if (e.getEntity() instanceof ServerPlayer jugador) {
                 Batalles.entrar(jugador);
+            }
+        });
+        NeoForge.EVENT_BUS.addListener(PlayerEvent.PlayerLoggedOutEvent.class, e -> {
+            if (e.getEntity() instanceof ServerPlayer jugador) {
+                Xarxa.sortir(jugador);
             }
         });
     }

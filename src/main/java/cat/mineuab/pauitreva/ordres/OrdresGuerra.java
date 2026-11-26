@@ -59,7 +59,13 @@ public final class OrdresGuerra {
                     "guanyem objectiu humiliacio", "guanyeu objectiu", "guanyeu controlats", "guanyeu humiliacio"), b);
 
     /** L'esborrany de l'objectiu de conquesta de cada país: contra qui i quins chunks. No es desa. */
-    private record Esborrany(UUID contra, Set<Chunk> chunks) {
+    /** L'esborrany de l'objectiu d'un país: contra qui i quins chunks. */
+    public record Esborrany(UUID contra, Set<Chunk> chunks) {
+    }
+
+    /** L'esborrany de l'objectiu que prepara un país, si en té (per a la pantalla). */
+    public static java.util.Optional<Esborrany> esborrany(UUID pais) {
+        return java.util.Optional.ofNullable(ESBORRANYS.get(pais)).filter(e -> !e.chunks().isEmpty());
     }
 
     private static final Map<UUID, Esborrany> ESBORRANYS = new HashMap<>();
